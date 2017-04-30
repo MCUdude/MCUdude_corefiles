@@ -50,9 +50,10 @@ int analogRead(uint8_t pin)
   pin = analogPinToChannel(pin);
 #endif
 
-// Prevent "unused parameter warning
+// The ATmega8515 and ATmega162 doesn't got an ADC. The following lines
+// gets rid of some compiler warnings
 #if defined(__AVR_ATmega8515__) || defined(__AVR_ATmega162__)
-pin;
+(void)pin;
 #endif
 
 #if defined(ADCSRB) && defined(MUX5)
