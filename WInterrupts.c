@@ -109,7 +109,7 @@ void attachInterrupt(uint8_t interruptNum, void (*userFunc)(void), int mode)
           break;
     
 // ATmega640, ATmega1280, ATmega2560 - 100-pin Arduino MEGA compatible pinout
-      #elif defined(MEGA_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
+      #elif defined(MEGACORE_100_PIN_MEGA_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
         case 2:
           EICRA = (EICRA & ~((1 << ISC00) | (1 << ISC01))) | (mode << ISC00);
           EIMSK |= (1 << INT0);
@@ -144,7 +144,7 @@ void attachInterrupt(uint8_t interruptNum, void (*userFunc)(void), int mode)
           break;      
           
 // ATmega640, ATmega1280, ATmega2560 - "100-pin AVR compatible" pinout
-      #elif defined(MEGA_AVR_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
+      #elif defined(MEGACORE_100_PIN_AVR_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
         case 0:
           EICRA = (EICRA & ~((1 << ISC00) | (1 << ISC01))) | (mode << ISC00);
           EIMSK |= (1 << INT0);
@@ -267,7 +267,7 @@ void detachInterrupt(uint8_t interruptNum)
           break;
           
 // ATmega640, ATmega1280, ATmega2560 - Arduino MEGA compatible pinout
-      #elif defined(MEGA_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
+      #elif defined(MEGACORE_100_PIN_MEGA_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
         case 2:
           EIMSK &= ~(1 << INT0);
           break;
@@ -294,7 +294,7 @@ void detachInterrupt(uint8_t interruptNum)
           break; 
           
 // ATmega640, ATmega1280, ATmega2560 - "AVR compatible" pinout
-      #elif defined(MEGA_AVR_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
+      #elif defined(MEGACORE_100_PIN_AVR_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
         case 0:
           EIMSK &= ~(1 << INT0);
           break;
@@ -384,7 +384,7 @@ void detachInterrupt(uint8_t interruptNum)
   IMPLEMENT_ISR(INT7_vect, EXTERNAL_INT_7)
 
 // ATmega640, ATmega1280, ATmega2560 - Arduino MEGA compatible pinout
-#elif defined(MEGA_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
+#elif defined(MEGACORE_100_PIN_MEGA_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
   IMPLEMENT_ISR(INT0_vect, EXTERNAL_INT_2)
   IMPLEMENT_ISR(INT1_vect, EXTERNAL_INT_3)
   IMPLEMENT_ISR(INT2_vect, EXTERNAL_INT_4)
@@ -395,7 +395,7 @@ void detachInterrupt(uint8_t interruptNum)
   IMPLEMENT_ISR(INT7_vect, EXTERNAL_INT_7)
   
 // ATmega640, ATmega1280, ATmega2560 - "AVR compatible" pinout
-#elif defined(MEGA_AVR_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
+#elif defined(MEGACORE_100_PIN_AVR_PINOUT) && (defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
   IMPLEMENT_ISR(INT0_vect, EXTERNAL_INT_0)
   IMPLEMENT_ISR(INT1_vect, EXTERNAL_INT_1)
   IMPLEMENT_ISR(INT2_vect, EXTERNAL_INT_2)
