@@ -27,18 +27,22 @@ Bash script for continuous integration of [Arduino](http://www.arduino.cc/) proj
 #### Usage
 See https://github.com/per1234/WatchdogLog/blob/master/.travis.yml for an example of the script in use. Please configure your continuous integration system to make the minimum number of downloads and sketch verifications necessary to effectively test your code. This will prevent wasting Arduino and Travis CI's bandwidth while making the builds run fast.
 ##### `set_script_verbosity SCRIPT_VERBOSITY_LEVEL`
-Control the level of verbosity of the script's output in the Travis CI log. Verbose output can be helpful for debugging but in normal usage it makes the log hard to read and may cause the log to exceed Travis CI's maximum log size of 4 MB, which causes the job to be terminated.
+Control the level of verbosity of the script's output in the Travis CI log. Verbose output can be helpful for debugging but in normal usage it makes the log hard to read and may cause the log to exceed Travis CI's maximum log size of 4 MB, which causes the job to be terminated. The default verbosity level is `0`.
 - Parameter: **SCRIPT_VERBOSITY_LEVEL** - `0`, `1` or `2` (least to most verbosity).
 
 ##### `set_application_folder APPLICATION_FOLDER`
-- Parameter: **APPLICATION_FOLDER** - This should be set to `/usr/local/share`. The Arduino IDE will be installed in the `arduino` subfolder.
+- Parameter: **APPLICATION_FOLDER** - The folder to install the Arduino IDE to. This should be set to `/usr/local/share` or a subfolder of that location. The folder will be created if it doesn't already exist. The Arduino IDE will be installed in the `arduino` subfolder.
 
 ##### `set_sketchbook_folder SKETCHBOOK_FOLDER`
-- Parameter: **SKETCHBOOK_FOLDER** - The folder to be set as the Arduino IDE's sketchbook folder. Libraries installed via the Arduino IDE CLI's `--install-library` option will be installed to the `libraries` subfolder of this folder. You can also use the `libraries` subfolder of this folder for [manually installing libraries in the recommended manner](https://www.arduino.cc/en/Guide/Libraries#toc5). This setting is only supported by Arduino IDE 1.5.6 and newer.
+- Parameter: **SKETCHBOOK_FOLDER** - The folder to be set as the Arduino IDE's sketchbook folder. The folder will be created if it doesn't already exist. Libraries installed via `install_library` will be installed to the `libraries` subfolder. Non-Boards Manager hardware packages installed via `install_package` will be installed to the `hardware` subfolder. This setting is only supported by Arduino IDE 1.5.6 and newer.
 
 ##### `set_board_testing BOARD_TESTING`
 Turn on/off checking for errors with the board definition that don't affect sketch verification such as missing bootloader file. If this is turned on and an error is detected the build will be failed. This feature is off by default.
 - Parameter: **BOARD_TESTING** - `true`/`false`
+
+##### `set_library_testing LIBRARY_TESTING`
+Turn on/off checking for errors with libraries that don't affect sketch verification such as missing or invalid items in the library.properties file. If this is turned on and an error is detected the build will be failed. This feature is off by default.
+- Parameter: **LIBRARY_TESTING** - `true`/`false`
 
 ##### Special version names:
   - `all`: Refers to all versions of the Arduino IDE (including the hourly build). In the context of `install_ide` this means all IDE versions listed in the script (those that support the command line interface, 1.5.2 and newer). In the context of all other functions this means all IDE versions that were installed via `install_ide`.
@@ -59,8 +63,13 @@ Install a range of version(s) of the Arduino IDE.
 "Manually" install the hardware package from the current repository. Packages are installed to `$SKETCHBOOK_FOLDER/hardware. Assumes the hardware package is located in the root of the download or repository and has the correct folder structure.
 
 ##### `install_package packageURL`
-"Manually" install a hardware package. Packages are installed to `$SKETCHBOOK_FOLDER/hardware. Assumes the hardware package is located in the root of the download or repository and has the correct folder structure.
-- Parameter: **packageURL** - The URL of the hardware package download or Git repository. The protocol component of the URL (e.g. `http://`, `https://`) is required.
+"Manually" install a hardware package downloaded as a compressed file. Packages are installed to `$SKETCHBOOK_FOLDER/hardware. Assumes the hardware package is located in the root of the file and has the correct folder structure.
+- Parameter: **packageURL** - The URL of the hardware package download. The protocol component of the URL (e.g. `http://`, `https://`) is required.
+
+##### `install_package packageURL [branchName]`
+"Manually" install a hardware package. Packages are installed to `$SKETCHBOOK_FOLDER/hardware. Assumes the hardware package is located in the root of the repository and has the correct folder structure.
+- Parameter: **packageURL** - The URL of the Git repository. The protocol component of the URL (e.g. `http://`, `https://`) is required.
+- Parameter(optional): **branchName** - Branch of the repository to install. If this argument is not specified or is left blank the default branch will be used.
 
 ##### `install_package packageID [packageURL]`
 Install a hardware package using the Arduino IDE (Boards Manager). Only the **Arduino AVR Boards** package is included with the Arduino IDE installation. Packages are installed to `$HOME/.arduino15/packages. You must call `install_ide` before this function. This feature is only available with Arduino IDE 1.6.4 and newer.
@@ -75,48 +84,57 @@ Install a library that is listed in the Arduino Library Manager index. The libra
 - Parameter: **libraryName** - The name of the library to install. You can specify a version separated from the name by a colon, e.g. "LiquidCrystal I2C:1.1.2". If no version is specified the most recent version will be installed. You can also specify comma-separated lists of library names.
 
 ##### `install_library libraryURL [newFolderName]`
-Install a library from a URL (either compressed file download or clone Git repository). The library is installed to the `libraries` subfolder of the sketchbook folder.
-- Parameter: **libraryURL** - The URL of the library download or library name in the Arduino Library Manager. The protocol component of the URL (e.g. `http://`, `https://`) is required. This can be any compressed file format or a .git file will cause that repository to be cloned. Assumes the library is located in the root of the file.
-- Parameter(optional): **newFolderName** - Folder name to rename the installed library folder to. This parameter is only used if the library identifier is a URL (installation from a compressed file or Git repository) This can be useful if the default folder name of the downloaded file is problematic. The Arduino IDE gives include file preference when the filename matches the library folder name. GitHub's "Download ZIP" file is given the folder name {repository name}-{branch name}. Library folder names that contain `-` or `.` are not compatible with Arduino IDE 1.5.6 and older, arduino will hang if it's started with a library using an invalid folder name installed.
+Download a library in a compressed file from a URL. The library is installed to the `libraries` subfolder of the sketchbook folder.
+- Parameter: **libraryURL** - The URL of the library download or library name in the Arduino Library Manager. The protocol component of the URL (e.g. `http://`, `https://`) is required. This can be any compressed file format. Assumes the library is located in the root of the file.
+- Parameter(optional): **newFolderName** - Folder name to rename the installed library folder to. This can be useful if the default folder name of the downloaded file is problematic. The Arduino IDE gives include file preference when the filename matches the library folder name. GitHub's "Download ZIP" file is given the folder name {repository name}-{branch name}. Library folder names that contain `-` or `.` are not compatible with Arduino IDE 1.5.6 and older, arduino will hang if it's started with a library using an invalid folder name installed.
+
+##### `install_library libraryURL [branchName [newFolderName]]`
+Install a library by cloning a Git repository). The library is installed to the `libraries` subfolder of the sketchbook folder.
+- Parameter: **libraryURL** - The URL of the library download or library name in the Arduino Library Manager. The protocol component of the URL (e.g. `http://`, `https://`) is required. Assumes the library is located in the root of the repository.
+- Parameter(optional): **branchName** - Branch of the repository to install. If this argument is not specified or is left blank the default branch will be used.
+- Parameter(optional): **newFolderName** - Folder name to rename the installed library folder to. This can be useful if the default folder name of the downloaded file is problematic. The Arduino IDE gives include file preference when the filename matches the library folder name. Library folder names that contain `-` or `.` are not compatible with Arduino IDE 1.5.6 and older, arduino will hang if it's started with a library using an invalid folder name installed. If the `newFolderName` argument is specified the `branchName` argument must also be specified. If you don't want to specify a branch then use `""` for the `branchName` argument.
 
 ##### `set_verbose_output_during_compilation verboseOutputDuringCompilation`
-Turn on/off arduino verbose output during compilation. This will show all the commands arduino runs during the process rather than just the compiler output. This is usually not very useful output and only clutters up the log.
+Turn on/off arduino verbose output during compilation. This will show all the commands arduino runs during the process rather than just the compiler output. This is usually not very useful output and only clutters up the log. This feature is off by default.
 - Parameter: **verboseOutputDuringCompilation** - `true`/`false`
 
 ##### `build_sketch sketchPath boardID allowFail IDEversion`
 ##### `build_sketch sketchPath boardID allowFail [IDEversionList]`
 ##### `build_sketch sketchPath boardID allowFail startIDEversion endIDEversion`
-Pass some parameters from .travis.yml to the script. `build_sketch` will echo the arduino exit code to the log, which is documented at https://github.com/arduino/Arduino/blob/master/build/shared/manpage.adoc#exit-status.
+Pass some parameters from .travis.yml to the script. `build_sketch` will echo the arduino exit status to the log, which is documented at https://github.com/arduino/Arduino/blob/master/build/shared/manpage.adoc#exit-status.
 - Parameter: **sketchPath** - Path to a sketch or folder containing sketches. If a folder is specified it will be recursively searched and all sketches will be verified.
 - Parameter: **boardID** - `package:arch:board[:parameters]` ID of the board to be compiled for. e.g. `arduino:avr:uno`. Board-specific parameters are only supported by Arduino IDE 1.5.5 and newer.
-- Parameter: **allowFail** - `true` or `false`. Allow the verification to fail without causing the CI build to fail.
+- Parameter: **allowFail** - `true`, `require`, or `false`. Allow the verification to fail without causing the CI build to fail. `require` will cause the build to fail if the sketch verification doesn't fail.
 - Parameter: **IDEversion** - A single version of the Arduino IDE to use to verify the sketch.
 - Parameter(optional): **IDEversionList** - A list of versions of the Arduino IDE to use to verify the sketch. e.g. `'("1.6.5-r5" "1.6.9" "1.8.2")'`. If no version list is provided all installed IDE versions will be used.
 - Parameter: **startIDEversion** - The start (inclusive) of a range of versions of the Arduino IDE to use to verify the sketch.
 - Parameter: **endIDEversion** - The end (inclusive) of a range of versions of the Arduino IDE to use to verify the sketch.
 
 ##### `display_report`
-Echo a tab separated report of all verification results to the log. The report is located at `$HOME/report.txt`. Note that Travis CI runs each build of the job in a separate virtual machine so if you have multiple jobs you will have multiple reports. The only way I have found to generate a single report for all tests is to run them as a single job. This means not setting multiple matrix environment variables in the `env` array. See https://docs.travis-ci.com/user/environment-variables. The report consists of:
+Echo a tab separated report of all verification results to the log. The report is located in `${HOME}/arduino-ci-script_report`. Note that Travis CI runs each build of the job in a separate virtual machine so if you have multiple jobs you will have multiple reports. The only way I have found to generate a single report for all tests is to run them as a single job. This means not setting multiple matrix environment variables in the `env` array. See https://docs.travis-ci.com/user/environment-variables. The report consists of:
 - Build timestamp
-- Travis CI build number
-- Travis CI job number
-- Travis CI job URL
-- Travis CI build trigger
-- Allow Travis CI job failure
-- Pull request number
-- Branch
-- Commit hash of the build
-- Commit range
-- Commit subject
+- Build - The Travis CI build number.
+- Job - Travis CI job number
+- Job URL - The URL of the Travis CI job log.
+- Build Trigger - The cause of this Travis CI build. Values are `push`, `pull_request`, `api`, `cron`.
+- Allow Job Failure - Whether the Travis CI configuration was set to allow the failure of this job without failing the build.
+- PR# - Pull request number (if build was triggered by a pull request).
+- Branch - The branch of the repository that was built.
+- Commit - Commit hash of the build.
+- Commit range - The range of commits that were included in the push or pull request.
+- Commit Message - First line of the commit message
 - Sketch filename
 - Board ID
 - IDE version
-- Program storage usage
-- Dynamic memory usage by global variables (not available for some boards)
-- Number of warnings
-- Sketch verification allowed to fail
-- Sketch verification exit code
-- Board error
+- Program Storage (bytes) - Program storage usage of the compiled sketch.
+- Dynamic Memory (bytes) - Dynamic memory usage by global variables in the compiled sketch (not available for some boards).
+- # Warnings - Number of warnings reported by the compiler during the sketch compilation.
+- Allow Failure - Whether the sketch verification was allowed to fail (set by the `allowFail` argument of `build_sketch`).
+- Exit Status - Exit status returned by arduino after the sketch verification.
+- # Board Issues - The number of board issues detected.
+- Board Issue - Short description of the last board issue detected.
+- # Library Issues - The number of library issues detected. Library issues are things that cause warnings in the sketch verification output from the IDE, rather than the compiler.
+- Library Issue - Short description of the last library issue detected.
 
 ##### `publish_report_to_repository REPORT_GITHUB_TOKEN repositoryURL reportBranch reportFolder doLinkComment`
 Add the report to a repository. See the [instructions for publishing job reports](publishing-job-reports) for details.
