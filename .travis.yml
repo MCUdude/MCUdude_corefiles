@@ -7,7 +7,7 @@ sudo: required
 env:
   global:
     # The Arduino IDE will be installed at ${APPLICATION_FOLDER}/arduino
-    - APPLICATION_FOLDER="/usr/local/share"
+    - APPLICATION_FOLDER="${HOME}/arduino-ide"
     - SKETCHBOOK_FOLDER="${HOME}/Arduino"
 
 

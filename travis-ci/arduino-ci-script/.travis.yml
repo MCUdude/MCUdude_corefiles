@@ -1,40 +1,39 @@
 # This file is used to test the script with Travis CI
 
 language: bash
-sudo: required
 
 
 env:
   global:
     # The Arduino IDE will be installed at APPLICATION_FOLDER/arduino
-    - APPLICATION_FOLDER="/usr/local/share"
-    - SKETCHBOOK_FOLDER="${HOME}/Arduino"
+    - APPLICATION_FOLDER="${HOME}/arduino-ide"
+    - SKETCHBOOK_FOLDER="${HOME}/arduino-sketchbook"
 
   matrix:
     # Test install_ide with no argument (using full version list). This would cause the Travis CI build to take much longer so I have it disabled
     # - INSTALL_IDE_START_VERSION=""
     # Test install_ide using full version list
-    - INSTALL_IDE_START_VERSION="all"
+    - INSTALL_IDE_START_VERSION="all" SCRIPT_VERBOSITY_LEVEL=0 VERBOSE_COMPILATION="false"
     # Test install_ide using custom version list. Test the use of the special version names "oldest" and "newest" in a version list. Test use of "hourly" version name.
-    - INSTALL_IDE_START_VERSION='("oldest" "1.8.1" "newest" "hourly")'
+    - INSTALL_IDE_START_VERSION='("oldest" "1.8.1" "1.8.2" "newest" "hourly")' VERBOSITY_LEVEL=1 VERBOSE_COMPILATION="true"
     # Allowed to fail
     # Test install_ide using single version
     # test the failure behavior of install_package when a Boards Manager installation is attempted using an IDE version that doesn't support it.
-    - INSTALL_IDE_START_VERSION="1.6.3"
+    - INSTALL_IDE_START_VERSION="1.6.3" VERBOSITY_LEVEL=2 VERBOSE_COMPILATION="false"
     # Test install_ide using version range. Test the use of the special version names "oldest" and "newest" in a version range.
-    - INSTALL_IDE_START_VERSION="oldest" INSTALL_IDE_END_VERSION="newest"
+    - INSTALL_IDE_START_VERSION="oldest" INSTALL_IDE_END_VERSION="newest" VERBOSITY_LEVEL=0 VERBOSE_COMPILATION="false"
 
 
 matrix:
   allow_failures:
     # The expected behavior is failure because 1.6.3 doesn't support boards manager installation.
-    - env: INSTALL_IDE_START_VERSION="1.6.3"
+    - env: INSTALL_IDE_START_VERSION="1.6.3" VERBOSITY_LEVEL=2 VERBOSE_COMPILATION="false"
 
 
 before_install:
   - source "${TRAVIS_BUILD_DIR}/arduino-ci-script.sh"
 
-  - set_script_verbosity 0
+  - set_script_verbosity "$VERBOSITY_LEVEL"
 
   - set_application_folder "$APPLICATION_FOLDER"
   - set_sketchbook_folder "$SKETCHBOOK_FOLDER"
@@ -42,19 +41,20 @@ before_install:
   # Check for board definition errors that don't affect compilation
   - set_board_testing "true"
 
+  # Check for library issues that don't affect compilation
+  - set_library_testing "true"
+
   - install_ide "$INSTALL_IDE_START_VERSION" "$INSTALL_IDE_END_VERSION"
 
   # Install hardware packages
   # Test package install from this repository (can't do this because the repository isn't a hardware package)
   # - install_package
-  # Test Boards Manager package install without URL. Test error handling of attempting to do a Boards Manager installation when the newest installed IDE version doesn't support it (should print a helpful error message and fail instead of hanging).
-  - install_package "arduino:sam"
-  # Test Boards Manager package install with URL
-  - install_package "MiniCore:avr" "https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json"
   # Test manual package install from compressed file download
   - install_package "https://github.com/SpenceKonde/ATTinyCore/archive/master.zip"
   # Test manual package install from Git repository clone
   - install_package "https://github.com/MCUdude/MightyCore.git"
+  # Test manual package install from Git repository clone
+  - install_package "https://github.com/JChristensen/mighty-1284p.git" "v1.6.3"
 
   # Test library installation from repository (can't do this because there is no library in this repository)
   # - install_library
@@ -64,12 +64,24 @@ before_install:
   - install_library "https://github.com/brianc118/MPU9250/archive/master.zip" "MPU9250"
   # Test library install from git repo
   - install_library "https://github.com/sfrwmaker/WirelessOregonV2.git"
+  # Test library install from git repo with branch
+  - install_library "https://github.com/sde1000/NanodeUNIO.git" "master"
   # Test library install from git repo with rename
-  - install_library "https://github.com/mikaelpatel/Arduino-Shell.git" "ArduinoShell"
+  - install_library "https://github.com/mikaelpatel/Arduino-Shell.git" "" "ArduinoShell"
+  # Test library install from git repo with branch and rename
+  - install_library "https://github.com/Avamander/max7456.git" "master" "max_7456"
+  # Test set_verbose_output_during_compilation.
+  - set_verbose_output_during_compilation "$VERBOSE_COMPILATION"
+
+  # Boards Manager and Library Manager tests are done as late as possible to allow job 3 to do more thorough testing of script verbosity level 2 before the job fails
+
+  # Test Boards Manager package install without URL. Test error handling of attempting to do a Boards Manager installation when the newest installed IDE version doesn't support it (should print a helpful error message and fail instead of hanging).
+  - install_package "arduino:sam"
+  # Test Boards Manager package install with URL
+  - install_package "MiniCore:avr" "https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json"
+
   # Test library install from Library Manager
   - install_library "Pushetta:1.0.1"
-  # Test set_verbose_output_during_compilation. Setting verbose output to false is not actually necessary but it tests the function.
-  - set_verbose_output_during_compilation "false"
 
 
 script:
@@ -90,6 +102,8 @@ script:
   # Test board from hardware package manually installed by cloning Git repository
   # Test build_sketch with an IDE version range
   - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MightyCore:avr:1284:pinout=standard,variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "1.8.1" "1.8.2"
+  # Test board from hardware package manually installed by cloning Git repository with non-default branch
+  - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "mighty-1284p:avr:avr_developers" "false" "newest"
 
   # Installed library tests:
   # Test build_sketch without absolute path
@@ -101,8 +115,12 @@ script:
   - build_sketch "${SKETCHBOOK_FOLDER}/libraries/NewPing/examples/NewPingExample/NewPingExample.pde" "arduino:avr:uno" "false" "all"
   # Test library installed from .git
   - build_sketch "${SKETCHBOOK_FOLDER}/libraries/WirelessOregonV2/examples/OregonReceiver/OregonReceiver.ino" "arduino:avr:uno" "false" "newest"
+  # Test library installed from .git with branch
+  - build_sketch "${SKETCHBOOK_FOLDER}/libraries/NanodeUNIO/examples/NanodeUNIO_test/NanodeUNIO_test.pde" "arduino:avr:uno" "false" "newest"
   # Test library installed from .git with rename
   - build_sketch "${SKETCHBOOK_FOLDER}/libraries/ArduinoShell/examples/ShellBlink/ShellBlink.ino" "arduino:avr:uno" "false" "newest"
+  # Test library installed from .git with branch and rename
+  - build_sketch "${SKETCHBOOK_FOLDER}/libraries/max_7456/examples/HelloWorld/HelloWorld.ino" "arduino:avr:uno" "false" "newest"
   # Test library installed from Library Manager
   - build_sketch "${SKETCHBOOK_FOLDER}/libraries/Pushetta/examples/simple_notification/simple_notification.ino" "arduino:avr:uno" "false" "newest"
 
@@ -129,8 +147,8 @@ script:
   - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics" "arduino:avr:uno" "false" '("1.8.1" "1.8.2")'
   # Test build_sketch with folder argument with an IDE version range
   - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics" "arduino:avr:uno" "false" "1.8.1" "1.8.2"
-  # Test build_sketch with folder argument allowed to fail (this will fail because WirelessOregonV2 is AVR specific)
-  - build_sketch "${SKETCHBOOK_FOLDER}/libraries/WirelessOregonV2/examples" "arduino:sam:arduino_due_x_dbg" "true" "newest"
+  # Test build_sketch with folder argument required to fail (this will fail because WirelessOregonV2 is AVR specific)
+  - build_sketch "${SKETCHBOOK_FOLDER}/libraries/WirelessOregonV2/examples" "arduino:sam:arduino_due_x_dbg" "require" "newest"
 
   - publish_report_to_gist "$REPORT_GITHUB_TOKEN" "$REPORT_GIST_URL" "true"
 
