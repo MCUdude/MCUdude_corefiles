@@ -13,7 +13,7 @@ env:
     # Test install_ide with no argument (using full version list). This would cause the Travis CI build to take much longer so I have it disabled
     # - INSTALL_IDE_START_VERSION=""
     # Test install_ide using full version list
-    - INSTALL_IDE_START_VERSION="all" SCRIPT_VERBOSITY_LEVEL=0 VERBOSE_COMPILATION="false"
+    - INSTALL_IDE_START_VERSION="all" VERBOSITY_LEVEL=0 VERBOSE_COMPILATION="false"
     # Test install_ide using custom version list. Test the use of the special version names "oldest" and "newest" in a version list. Test use of "hourly" version name.
     - INSTALL_IDE_START_VERSION='("oldest" "1.8.1" "1.8.2" "newest" "hourly")' VERBOSITY_LEVEL=1 VERBOSE_COMPILATION="true"
     # Allowed to fail
@@ -62,6 +62,8 @@ before_install:
   - install_library "https://bitbucket.org/teckel12/arduino-new-ping/downloads/NewPing_v1.8.zip"
   # Test library install from .zip file with rename. If the rename doesn't work then any job verifying with Arduino IDE 1.5.6 or older will hang because GitHub changes the folder name to MPU9250-master, which is not a valid folder name on those IDE versions.
   - install_library "https://github.com/brianc118/MPU9250/archive/master.zip" "MPU9250"
+  # Test library install from .zip file/folder that has a dot in the name
+  - install_library "https://github.com/arduino-libraries/CapacitiveSensor/archive/0.5.1.zip"
   # Test library install from git repo
   - install_library "https://github.com/sfrwmaker/WirelessOregonV2.git"
   # Test library install from git repo with branch
@@ -110,6 +112,8 @@ script:
   # Test library installed from .zip with rename
   - cd "${SKETCHBOOK_FOLDER}/libraries/MPU9250/examples/MPU9250/"
   - build_sketch "MPU9250.ino" "arduino:avr:uno" "false" "newest"
+  # Test library installed from .zip with dot in the folder name
+  - build_sketch "${SKETCHBOOK_FOLDER}/libraries/CapacitiveSensor-0.5.1/examples/CapacitiveSensorSketch/CapacitiveSensorSketch.pde" "arduino:avr:uno" "false" "newest"
   # Test library installed from .zip
   # Test build_sketch with "all" IDE version name
   - build_sketch "${SKETCHBOOK_FOLDER}/libraries/NewPing/examples/NewPingExample/NewPingExample.pde" "arduino:avr:uno" "false" "all"

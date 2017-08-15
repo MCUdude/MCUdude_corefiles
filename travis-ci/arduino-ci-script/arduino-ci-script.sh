@@ -236,6 +236,10 @@ function install_ide()
   eval "$INSTALLED_IDE_VERSION_LIST_ARRAY"
   local IDEversion
   for IDEversion in "${IDEversionListArray[@]}"; do
+    if [[ "$ARDUINO_CI_SCRIPT_VERBOSITY_LEVEL" -eq 0 ]]; then
+      # If the download/installation process is going slowly when installing a lot of IDE versions this function may cause the build to fail due to exceeding Travis CI's 10 minutes without log output timeout so it's necessary to periodically print something.
+      echo "Installing: $IDEversion"
+    fi
     # Determine download file extension
     local tgzExtensionVersionsRegex="1.5.[0-9]"
     if [[ "$IDEversion" =~ $tgzExtensionVersionsRegex ]]; then
@@ -440,8 +444,8 @@ function install_package()
     else
       cd "$ARDUINO_CI_SCRIPT_TEMPORARY_FOLDER"
 
-      # Clean up the temporary folder
-      rm --force $ARDUINO_CI_SCRIPT_VERBOSITY_OPTION ./*.*
+      # Delete everything from the temporary folder
+      find ./ -mindepth 1 -delete
 
       # Download the package
       wget --no-verbose $ARDUINO_CI_SCRIPT_QUIET_OPTION "$packageURL"
@@ -449,8 +453,8 @@ function install_package()
       # Uncompress the package
       extract ./*.*
 
-      # Clean up the temporary folder
-      rm --force $ARDUINO_CI_SCRIPT_VERBOSITY_OPTION ./*.*
+      # Delete all files from the temporary folder
+      find ./ -type f -maxdepth 1 -delete
 
       # Install the package
       mv $ARDUINO_CI_SCRIPT_VERBOSITY_OPTION ./* "${ARDUINO_CI_SCRIPT_SKETCHBOOK_FOLDER}/hardware/"
@@ -544,13 +548,17 @@ function install_library()
       local -r newFolderName="$2"
       # Download the file to the temporary folder
       cd "$ARDUINO_CI_SCRIPT_TEMPORARY_FOLDER"
-      # Clean up the temporary folder
-      rm --force $ARDUINO_CI_SCRIPT_VERBOSITY_OPTION ./*.*
+
+      # Delete everything from the temporary folder
+      find ./ -mindepth 1 -delete
+
       wget --no-verbose $ARDUINO_CI_SCRIPT_QUIET_OPTION "$libraryIdentifier"
 
       extract ./*.*
-      # Clean up the temporary folder
-      rm --force $ARDUINO_CI_SCRIPT_VERBOSITY_OPTION ./*.*
+
+      # Delete all files from the temporary folder
+      find ./ -type f -maxdepth 1 -delete
+
       # Install the library
       mv $ARDUINO_CI_SCRIPT_VERBOSITY_OPTION ./* "${ARDUINO_CI_SCRIPT_SKETCHBOOK_FOLDER}/libraries/${newFolderName}"
     fi
