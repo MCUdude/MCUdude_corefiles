@@ -32,6 +32,7 @@ Version Modified By Date     Comments
 0008    S Kanemoto  12/06/22 Fixed for Leonardo by @maris_HY
 0009    J Reucker   15/04/10 Issue #292 Fixed problems with ATmega8 (thanks to Pete62)
 0010    jipp        15/04/13 added additional define check #2923
+0011    MCUdude     08/01/18 Fix problems with tone on ATmega64/128 (thanks to wolfbert)
 *************************************************/
 
 #include <avr/interrupt.h>
@@ -42,15 +43,15 @@ Version Modified By Date     Comments
 // Fix missing definitions
 #if defined(__AVR_ATmega8__) || defined(__AVR_ATmega8535__) || defined(__AVR_ATmega16__) \
 || defined(__AVR_ATmega32__) || defined(__AVR_ATmega64__) || defined(__AVR_ATmega128__)
-#define TCCR2A TCCR2
-#define TCCR2B TCCR2
-#define COM2A1 COM21
-#define COM2A0 COM20
-#define OCR2A OCR2
-#define TIMSK2 TIMSK
-#define OCIE2A OCIE2
-#define TIMER2_COMPA_vect TIMER2_COMP_vect
-#define TIMSK1 TIMSK
+  #define TCCR2A TCCR2
+  #define TCCR2B TCCR2
+  #define COM2A1 COM21
+  #define COM2A0 COM20
+  #define OCR2A  OCR2
+  #define TIMSK2 TIMSK
+  #define OCIE2A OCIE2
+  #define TIMER2_COMPA_vect TIMER2_COMP_vect
+  #define TIMSK1 TIMSK
 #endif
 
 // timerx_toggle_count:
@@ -59,9 +60,9 @@ Version Modified By Date     Comments
 //  < 0 - infinitely (until stop() method called, or new play() called)
 
 #if !defined(__AVR_ATmega8__)
-volatile long timer0_toggle_count;
-volatile uint8_t *timer0_pin_port;
-volatile uint8_t timer0_pin_mask;
+  volatile long timer0_toggle_count;
+  volatile uint8_t *timer0_pin_port;
+  volatile uint8_t timer0_pin_mask;
 #endif
 
 volatile long timer1_toggle_count;
@@ -72,67 +73,73 @@ volatile uint8_t *timer2_pin_port;
 volatile uint8_t timer2_pin_mask;
 
 #if defined(TIMSK3)
-volatile long timer3_toggle_count;
-volatile uint8_t *timer3_pin_port;
-volatile uint8_t timer3_pin_mask;
+  volatile long timer3_toggle_count;
+  volatile uint8_t *timer3_pin_port;
+  volatile uint8_t timer3_pin_mask;
 #endif
 
 #if defined(TIMSK4)
-volatile long timer4_toggle_count;
-volatile uint8_t *timer4_pin_port;
-volatile uint8_t timer4_pin_mask;
+  volatile long timer4_toggle_count;
+  volatile uint8_t *timer4_pin_port;
+  volatile uint8_t timer4_pin_mask;
 #endif
 
 #if defined(TIMSK5)
-volatile long timer5_toggle_count;
-volatile uint8_t *timer5_pin_port;
-volatile uint8_t timer5_pin_mask;
+  volatile long timer5_toggle_count;
+  volatile uint8_t *timer5_pin_port;
+  volatile uint8_t timer5_pin_mask;
 #endif
 
+
+
 #if defined(__AVR_ATmega8515__) || defined(__AVR_ATmega162__)
+  #define AVAILABLE_TONE_PINS 1
+  #define USE_TIMER1
+  const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 1 /*, 0 */ };
+  static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255 */ };
 
-#define AVAILABLE_TONE_PINS 2
-#define USE_TIMER1
+#elif defined(__AVR_ATmega8__) || defined(__AVR_ATmega8535__) \
+|| defined(__AVR_ATmega16__)  || defined(__AVR_ATmega32__)
+  #define AVAILABLE_TONE_PINS 1
+  #define USE_TIMER2
+  const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 2 /*, 1 */ };
+  static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255 */ };
 
-const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 1 /*, 3, 4, 5, 1, 0 */ };
-static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255, 255, 255, 255, 255 */ };
+#elif defined(__AVR_ATmega64__) || defined(__AVR_ATmega128__)
+  #define AVAILABLE_TONE_PINS 1
+  #define USE_TIMER2
+  const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 2 /*, 1 */ };
+  static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255 */ };
 
 #elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega1281__) \
 || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega2561__)
-
-#define AVAILABLE_TONE_PINS 1
-#define USE_TIMER2
-
-const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 2 /*, 3, 4, 5, 1, 0 */ };
-static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255, 255, 255, 255, 255 */ };
-
-#elif defined(__AVR_ATmega8__)
-
-#define AVAILABLE_TONE_PINS 1
-#define USE_TIMER2
-
-const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 2 /*, 1 */ };
-static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255 */ };
+  #define AVAILABLE_TONE_PINS 1
+  #define USE_TIMER2
+  const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 2 /*, 3, 4, 5, 1, 0 */ };
+  static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255, 255, 255, 255, 255 */ };
 
 #elif defined(__AVR_ATmega32U4__)
+  #define AVAILABLE_TONE_PINS 1
+  #define USE_TIMER3
+  const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 3 /*, 1 */ };
+  static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255 */ };
  
-#define AVAILABLE_TONE_PINS 1
-#define USE_TIMER3
- 
-const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 3 /*, 1 */ };
-static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255 */ };
- 
-#else
-
-#define AVAILABLE_TONE_PINS 1
-#define USE_TIMER2
-
-// Leave timer 0 to last.
-const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 2 /*, 1, 0 */ };
-static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255, 255 */ };
+#else // Generic
+  #define AVAILABLE_TONE_PINS 1
+  #define USE_TIMER2
+  const uint8_t PROGMEM tone_pin_to_timer_PGM[] = { 2 /*, 1, 0 */ };
+  static uint8_t tone_pins[AVAILABLE_TONE_PINS] = { 255 /*, 255, 255 */ };
 
 #endif
 
+// Identifies the timer which has prescaler values 1/8/32/64/128/256/1024
+// Other timers are lacking 32 and 128 because clock select bits are used 
+// for external clock input
+#if defined(__AVR_ATmega64__) || defined(__AVR_ATmega128__)
+  #define TIMER_WITH_FULL_PRESCALER 0         
+#else
+  #define TIMER_WITH_FULL_PRESCALER 2         
+#endif
 
 
 static int8_t toneBegin(uint8_t _pin)
@@ -248,7 +255,7 @@ static int8_t toneBegin(uint8_t _pin)
 
 
 
-// frequency (in hertz) and duration (in milliseconds).
+// Frequency (in hertz) and duration (in milliseconds).
 
 void tone(uint8_t _pin, unsigned int frequency, unsigned long duration)
 {
@@ -274,7 +281,7 @@ void tone(uint8_t _pin, unsigned int frequency, unsigned long duration)
         ocr = F_CPU / frequency / 2 / 8 - 1;
         prescalarbits = 0b010;  // ck/8: same for both timers
 
-        if (_timer == 2 && ocr > 255)
+        if (_timer == TIMER_WITH_FULL_PRESCALER && ocr > 255)
         {
           ocr = F_CPU / frequency / 2 / 32 - 1;
           prescalarbits = 0b011;
@@ -283,9 +290,9 @@ void tone(uint8_t _pin, unsigned int frequency, unsigned long duration)
         if (ocr > 255)
         {
           ocr = F_CPU / frequency / 2 / 64 - 1;
-          prescalarbits = _timer == 0 ? 0b011 : 0b100;
+          prescalarbits = _timer != TIMER_WITH_FULL_PRESCALER ? 0b011 : 0b100;
 
-          if (_timer == 2 && ocr > 255)
+          if (_timer == TIMER_WITH_FULL_PRESCALER && ocr > 255)
           {
             ocr = F_CPU / frequency / 2 / 128 - 1;
             prescalarbits = 0b101;
@@ -294,12 +301,12 @@ void tone(uint8_t _pin, unsigned int frequency, unsigned long duration)
           if (ocr > 255)
           {
             ocr = F_CPU / frequency / 2 / 256 - 1;
-            prescalarbits = _timer == 0 ? 0b100 : 0b110;
+            prescalarbits = _timer != TIMER_WITH_FULL_PRESCALER ? 0b100 : 0b110;
             if (ocr > 255)
             {
-              // can't do any better than /1024
+              // Can't do any better than /1024
               ocr = F_CPU / frequency / 2 / 1024 - 1;
-              prescalarbits = _timer == 0 ? 0b101 : 0b111;
+              prescalarbits = _timer != TIMER_WITH_FULL_PRESCALER ? 0b101 : 0b111;
             }
           }
         }
