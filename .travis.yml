@@ -40,8 +40,8 @@ install:
 
   # MajorCore
   - install_package "https://github.com/MCUdude/MajorCore/archive/master.zip"
-  - rm --force --recursive --verbose "${SKETCHBOOK_FOLDER}/hardware/MajorCore-master/avr/cores/majorcore/*"
-  - cp --force --recursive --verbose "$TRAVIS_BUILD_DIR"/* "${SKETCHBOOK_FOLDER}/hardware/MajorCore-master/avr/cores/majorcore"
+  - rm --force --recursive --verbose "${SKETCHBOOK_FOLDER}/hardware/MajorCore-master/avr/cores/MCUdude_corefiles/*"
+  - cp --force --recursive --verbose "$TRAVIS_BUILD_DIR"/* "${SKETCHBOOK_FOLDER}/hardware/MajorCore-master/avr/cores/MCUdude_corefiles"
 
   # MiniCore (disabled until build.core value is changed in MiniCore's boards.txt)
   #- install_package "https://github.com/MCUdude/MiniCore/archive/master.zip"
