@@ -44,9 +44,9 @@ install:
   - cp --force --recursive --verbose "$TRAVIS_BUILD_DIR"/* "${SKETCHBOOK_FOLDER}/hardware/MajorCore-master/avr/cores/MCUdude_corefiles"
 
   # MiniCore (disabled until build.core value is changed in MiniCore's boards.txt)
-  #- install_package "https://github.com/MCUdude/MiniCore/archive/master.zip"
-  #- rm --force --recursive --verbose "${SKETCHBOOK_FOLDER}/hardware/MiniCore-master/avr/cores/MCUdude_corefiles/*"
-  #- cp --force --recursive --verbose "$TRAVIS_BUILD_DIR"/* "${SKETCHBOOK_FOLDER}/hardware/MiniCore-master/avr/cores/MCUdude_corefiles"
+  - install_package "https://github.com/MCUdude/MiniCore/archive/master.zip"
+  - rm --force --recursive --verbose "${SKETCHBOOK_FOLDER}/hardware/MiniCore-master/avr/cores/MCUdude_corefiles/*"
+  - cp --force --recursive --verbose "$TRAVIS_BUILD_DIR"/* "${SKETCHBOOK_FOLDER}/hardware/MiniCore-master/avr/cores/MCUdude_corefiles"
 
 
 script:
@@ -70,11 +70,11 @@ script:
   - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MajorCore-master:avr:162:BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
   - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MajorCore-master:avr:8515:BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
 
-  #- build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:328:variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
-  #- build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:168:variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
-  #- build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:88:variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
-  #- build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:48:variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
-  #- build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:8:BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
+  - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:328:variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
+  - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:168:variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
+  - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:88:variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
+  - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:48:variant=modelP,BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
+  - build_sketch "${APPLICATION_FOLDER}/arduino/examples/01.Basics/BareMinimum/BareMinimum.ino" "MiniCore-master:avr:8:BOD=2v7,LTO=Os,clock=16MHz_external" "false" "all"
 
 
 after_script:
