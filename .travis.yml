@@ -30,8 +30,8 @@ install:
   # Install MightyCore
   - install_package "https://github.com/MCUdude/MightyCore/archive/master.zip"
   # Replace the core with the current version from this repository
-  - rm --force --recursive --verbose "${SKETCHBOOK_FOLDER}/hardware/MightyCore-master/avr/cores/MightyCore/*"
-  - cp --force --recursive --verbose "$TRAVIS_BUILD_DIR"/* "${SKETCHBOOK_FOLDER}/hardware/MightyCore-master/avr/cores/MightyCore"
+  - rm --force --recursive --verbose "${SKETCHBOOK_FOLDER}/hardware/MightyCore-master/avr/cores/MCUdude_corefiles/*"
+  - cp --force --recursive --verbose "$TRAVIS_BUILD_DIR"/* "${SKETCHBOOK_FOLDER}/hardware/MightyCore-master/avr/cores/MCUdude_corefiles"
 
   # MegaCore
   - install_package "https://github.com/MCUdude/MegaCore/archive/master.zip"
