@@ -99,8 +99,11 @@ unsigned long micros() {
 #endif
 
   SREG = oldSREG;
+#if F_CPU == 20000000L
   
+#else
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+#endif
 }
 
 void delay(unsigned long ms)
