@@ -24,20 +24,20 @@
 
 // the prescaler is set so that timer0 ticks every 64 clock cycles, and the
 // the overflow handler is called every 256 ticks.
-// 20MHz: An overflow happens every  819.2  microseconds    --->     0,05 (time of a cycle) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
+// 20MHz: An overflow happens every 819.2  microseconds ---> 0,05 (time of a cycle) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
 // 16MHz: An overflow happens every 1024 microseconds
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
 
 // the whole number of milliseconds per timer0 overflow
-// For 20MHz this would be 0 (because 819)
-// For 16MHz this would be 1 (because 1024)
+// For 20MHz this would be 0 (because of 819)
+// For 16MHz this would be 1 (because of 1024)
 #define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
 // about - 8 and 16 MHz - this doesn't lose precision.)
 // For 16 MHz: 24 (1024 % 1000) gets shiftet right by 3 which results in 3
-// For 20MHz 819 (819 % 1000) gets shiftet right by 3 which results in 102 (precision was lost)
+// For 20 MHz: 819 (819 % 1000) gets shiftet right by 3 which results in 102 (precision was lost)
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
 
 // 1000 shift by 3 (to fit it in a byte) to the right is 125 (no precision lost) 
@@ -46,12 +46,9 @@
 // 1000 shift by 2 (to fit in a byte) to the right is 250 (no precision lost)
 #define FRACT_MAX2 (1000 >> 2)
 
-
 volatile unsigned long timer0_overflow_count = 0;
-
 volatile unsigned long timer0_millis = 0;
 static unsigned char timer0_fract = 0;
-
 
 // timer0 interrupt routine ,- is called every time timer0 overflows
 #if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
@@ -71,7 +68,6 @@ ISR(TIMER0_OVF_vect)
         f -= FRACT_MAX;
         m += 1;
     }
-
     timer0_fract = f;
     timer0_millis = m;
 
@@ -79,9 +75,6 @@ ISR(TIMER0_OVF_vect)
     timer0_overflow_count++;
 }
 
-
-
-// 
 unsigned long millis()
 {
     unsigned long m;
@@ -108,7 +101,7 @@ unsigned long micros() {
 
     m = timer0_overflow_count;
 
-    // TCNT0 ist the Timer Counter Register
+    // TCNT0 : The Timer Counter Register
 #if defined(TCNT0)
     t = TCNT0;
 #elif defined(TCNT0L)
@@ -117,7 +110,7 @@ unsigned long micros() {
 #error TIMER 0 not defined
 #endif
 
-// Timer0 Interrupt Flag Register
+    // Timer0 Interrupt Flag Register
 #ifdef TIFR0
     if ((TIFR0 & _BV(TOV0)) && (t < 255))
         m++;
