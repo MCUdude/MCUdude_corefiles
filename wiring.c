@@ -74,7 +74,7 @@ ISR(TIMER0_OVF_vect)
 
 	timer0_fract = f;
 	timer0_millis = m;
-	
+
 	// Since this function was called, timer0 overflowed
 	timer0_overflow_count++;
 }
@@ -99,22 +99,22 @@ unsigned long millis()
 unsigned long micros() {
 	unsigned long m;
 	uint8_t oldSREG = SREG;
-	
+
 	// t will be the number where the timer0 counter stopped
 	uint8_t t;
-	
+
 	// Stop all interrupts
 	cli();
-	
+
 	m = timer0_overflow_count;
-	
+
 	// TCNT0 ist the Timer Counter Register
 #if defined(TCNT0)
 	t = TCNT0;
 #elif defined(TCNT0L)
 	t = TCNT0L;
 #else
-	#error TIMER 0 not defined
+#error TIMER 0 not defined
 #endif
 
 // Timer0 Interrupt Flag Register
@@ -128,20 +128,20 @@ unsigned long micros() {
 
 	// Restore SREG
 	SREG = oldSREG;
-	
+
 #if F_CPU >= 20000000L
 
-// m needs to be multiplied by 819,2 
-// t needs to be multiplied by 3,2
-// then add m and t
-// TODO:
-  return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+	// m needs to be multiplied by 819,2 
+	// t needs to be multiplied by 3,2
+	// then add m and t
+	// TODO:
+	return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #else
 
-  // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
-  // m is multiplied by 4 (since it was already multiplied by 256)
-  // t is multiplied by 4
-  return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+	// Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
+	// m is multiplied by 4 (since it was already multiplied by 256)
+	// t is multiplied by 4
+	return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #endif
 }
 
@@ -151,7 +151,7 @@ void delay(unsigned long ms)
 
 	while (ms > 0) {
 		yield();
-		while ( ms > 0 && (micros() - start) >= 1000) {
+		while (ms > 0 && (micros() - start) >= 1000) {
 			ms--;
 			start += 1000;
 		}
@@ -187,7 +187,7 @@ void delayMicroseconds(unsigned int us)
 
 	// for a one-microsecond delay, simply return.  the overhead
 	// of the function call takes 18 (20) cycles, which is 1us
-	__asm__ __volatile__ (
+	__asm__ __volatile__(
 		"nop" "\n\t"
 		"nop" "\n\t"
 		"nop" "\n\t"
@@ -268,12 +268,12 @@ void delayMicroseconds(unsigned int us)
 	// per iteration, so execute it us/4 times
 	// us is at least 4, divided by 4 gives us 1 (no zero delay bug)
 	us >>= 2; // us div 4, = 4 cycles
-	
+
 
 #endif
 
 	// busy wait
-	__asm__ __volatile__ (
+	__asm__ __volatile__(
 		"1: sbiw %0,1" "\n\t" // 2 cycles
 		"brne 1b" : "=w" (us) : "0" (us) // 2 cycles
 	);
@@ -285,7 +285,7 @@ void init()
 	// this needs to be called before setup() or some functions won't
 	// work there
 	sei();
-	
+
 	// on the ATmega168, timer 0 is also used for fast hardware pwm
 	// (using phase-correct PWM would mean that timer 0 overflowed half as often
 	// resulting in different millis() behavior on the ATmega8 and ATmega168)
@@ -304,10 +304,10 @@ void init()
 	// this combination is for the ATmega8535, ATmega8, ATmega16, ATmega32, ATmega8515, ATmega162
 	sbi(TCCR0, CS01);
 	sbi(TCCR0, CS00);
-		#if defined(WGM00) && defined(WGM01) // The ATmega8 doesn't have WGM00 and WGM01
-	  sbi(TCCR0, WGM00);
-	  sbi(TCCR0, WGM01);
-	#endif
+#if defined(WGM00) && defined(WGM01) // The ATmega8 doesn't have WGM00 and WGM01
+	sbi(TCCR0, WGM00);
+	sbi(TCCR0, WGM01);
+#endif
 #elif defined(TCCR0B) && defined(CS01) && defined(CS00)
 	// this combination is for the standard 168/328/640/1280/1281/2560/2561
 	sbi(TCCR0B, CS01);
@@ -317,7 +317,7 @@ void init()
 	sbi(TCCR0A, CS01);
 	sbi(TCCR0A, CS00);
 #else
-	#error Timer 0 prescale factor 64 not set correctly
+#error Timer 0 prescale factor 64 not set correctly
 #endif
 
 	// enable timer 0 overflow interrupt
@@ -326,7 +326,7 @@ void init()
 #elif defined(TIMSK0) && defined(TOIE0)
 	sbi(TIMSK0, TOIE0);
 #else
-	#error	Timer 0 overflow interrupt not set correctly
+#error	Timer 0 overflow interrupt not set correctly
 #endif
 
 	// timers 1 and 2 are used for phase-correct hardware pwm
@@ -358,8 +358,8 @@ void init()
 	sbi(TCCR2, CS22);
 #elif defined(TCCR2B) && defined(CS22)
 	sbi(TCCR2B, CS22);
-//#else
-	// Timer 2 not finished (may not be present on this CPU)
+	//#else
+		// Timer 2 not finished (may not be present on this CPU)
 #endif
 
 	// configure timer 2 for phase correct pwm (8-bit)
@@ -367,8 +367,8 @@ void init()
 	sbi(TCCR2, WGM20);
 #elif defined(TCCR2A) && defined(WGM20)
 	sbi(TCCR2A, WGM20);
-//#else
-	// Timer 2 not finished (may not be present on this CPU)
+	//#else
+		// Timer 2 not finished (may not be present on this CPU)
 #endif
 
 #if defined(TCCR3B) && defined(CS31) && defined(WGM30)
@@ -400,31 +400,31 @@ void init()
 
 #if defined(ADCSRA)
 	// set a2d prescaler so we are inside the desired 50-200 KHz range.
-	#if F_CPU >= 16000000 // 16 MHz / 128 = 125 KHz
-		sbi(ADCSRA, ADPS2);
-		sbi(ADCSRA, ADPS1);
-		sbi(ADCSRA, ADPS0);
-	#elif F_CPU >= 8000000 // 8 MHz / 64 = 125 KHz
-		sbi(ADCSRA, ADPS2);
-		sbi(ADCSRA, ADPS1);
-		cbi(ADCSRA, ADPS0);
-	#elif F_CPU >= 4000000 // 4 MHz / 32 = 125 KHz
-		sbi(ADCSRA, ADPS2);
-		cbi(ADCSRA, ADPS1);
-		sbi(ADCSRA, ADPS0);
-	#elif F_CPU >= 2000000 // 2 MHz / 16 = 125 KHz
-		sbi(ADCSRA, ADPS2);
-		cbi(ADCSRA, ADPS1);
-		cbi(ADCSRA, ADPS0);
-	#elif F_CPU >= 1000000 // 1 MHz / 8 = 125 KHz
-		cbi(ADCSRA, ADPS2);
-		sbi(ADCSRA, ADPS1);
-		sbi(ADCSRA, ADPS0);
-	#else // 128 kHz / 2 = 64 KHz -> This is the closest you can get, the prescaler is 2
-		cbi(ADCSRA, ADPS2);
-		cbi(ADCSRA, ADPS1);
-		sbi(ADCSRA, ADPS0);
-	#endif
+#if F_CPU >= 16000000 // 16 MHz / 128 = 125 KHz
+	sbi(ADCSRA, ADPS2);
+	sbi(ADCSRA, ADPS1);
+	sbi(ADCSRA, ADPS0);
+#elif F_CPU >= 8000000 // 8 MHz / 64 = 125 KHz
+	sbi(ADCSRA, ADPS2);
+	sbi(ADCSRA, ADPS1);
+	cbi(ADCSRA, ADPS0);
+#elif F_CPU >= 4000000 // 4 MHz / 32 = 125 KHz
+	sbi(ADCSRA, ADPS2);
+	cbi(ADCSRA, ADPS1);
+	sbi(ADCSRA, ADPS0);
+#elif F_CPU >= 2000000 // 2 MHz / 16 = 125 KHz
+	sbi(ADCSRA, ADPS2);
+	cbi(ADCSRA, ADPS1);
+	cbi(ADCSRA, ADPS0);
+#elif F_CPU >= 1000000 // 1 MHz / 8 = 125 KHz
+	cbi(ADCSRA, ADPS2);
+	sbi(ADCSRA, ADPS1);
+	sbi(ADCSRA, ADPS0);
+#else // 128 kHz / 2 = 64 KHz -> This is the closest you can get, the prescaler is 2
+	cbi(ADCSRA, ADPS2);
+	cbi(ADCSRA, ADPS1);
+	sbi(ADCSRA, ADPS0);
+#endif
 	// enable a2d conversions
 	sbi(ADCSRA, ADEN);
 #endif
