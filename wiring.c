@@ -44,7 +44,7 @@
 #define FRACT_MAX (1000 >> 3)
 
 // 1000 shift by 2 (to fit in a byte) to the right is 250 (no precision lost)
-#define FRACT_MAX (1000 >> 2)
+#define FRACT_MAX2 (1000 >> 2)
 
 
 volatile unsigned long timer0_overflow_count = 0;
@@ -130,12 +130,14 @@ unsigned long micros() {
 	SREG = oldSREG;
 
 #if F_CPU >= 20000000L
+	//Technically  m needs to be multiplied by 819,2 
+	// and t needs to be multiplied by 3,2
+	// then we add m and t
 
-	// m needs to be multiplied by 819,2 
-	// t needs to be multiplied by 3,2
-	// then add m and t
-	// TODO:
-	return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+	// Multiply m by 256 (to fit t) and add t
+	m = (m << 8) + t;
+
+	return m + (m << 1) + (m >> 2) - (m >> 4);
 #else
 
 	// Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
