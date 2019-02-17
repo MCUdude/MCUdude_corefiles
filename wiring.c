@@ -112,7 +112,6 @@ unsigned long micros() {
     if ((TIFR & _BV(TOV0)) && (t < 255))
         m++;
 #endif
-
     // Restore SREG
     SREG = oldSREG;
 
@@ -123,10 +122,8 @@ unsigned long micros() {
 
     // Multiply m by 256 (to fit t) and add t
     m = (m << 8) + t;
-
     return m + (m << 1) + (m >> 2) - (m >> 4);
 #else
-
     // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
     // m is multiplied by 4 (since it was already multiplied by 256)
     // t is multiplied by 4
