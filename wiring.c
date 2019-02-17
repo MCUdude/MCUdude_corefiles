@@ -55,7 +55,7 @@ ISR(TIMER0_OVF_vect)
 #endif
 {
   // copy these to local variables so they can be stored in registers
-  // (volatile variables must be read from memory on every access)
+  // (volatile variables must be read from memory on every access, so this saves time)
   unsigned long m = timer0_millis;
   unsigned char f = timer0_fract;
 
@@ -101,7 +101,7 @@ unsigned long micros() {
 #elif defined(TCNT0L)
   t = TCNT0L;
 #else
-#error TIMER 0 not defined
+  #error TIMER 0 not defined
 #endif
 
   // Timer0 Interrupt Flag Register
