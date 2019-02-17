@@ -24,7 +24,8 @@
 
 // the prescaler is set so that timer0 ticks every 64 clock cycles, and the
 // the overflow handler is called every 256 ticks.
-// 20MHz: An overflow happens every 819.2  microseconds ---> 0,05 (time of a cycle) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
+// 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682 
+// 20MHz: An overflow happens every 819.2 microseconds ---> 0,05 (time of a cycle in micros) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
 // 16MHz: An overflow happens every 1024 microseconds
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
 
@@ -36,9 +37,11 @@
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
 // about - 8 and 16 MHz - this doesn't lose precision.)
-// For 16 MHz: 24 (1024 % 1000) gets shiftet right by 3 which results in 3
-// For 20 MHz: 819 (819 % 1000) gets shiftet right by 3 which results in 102 (precision was lost)
+// For 16 MHz: 24 (1024 % 1000) gets shifted right by 3 which results in 3   (precision was lost)
+// For 20 MHz: 819 (819 % 1000) gets shifted right by 3 which results in 102 (precision was lost)
+// For 24 MHz: 682 (682 % 1000) gets shifted right by 3 which results in 
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
+// Shift right by 3 to fit in a byte (results in 125)
 #define FRACT_MAX (1000 >> 3)
 // 1000 shift by 2 (to fit in a byte) to the right is 250 (no precision lost)
 #define FRACT_MAX2 (1000 >> 2)
@@ -115,8 +118,13 @@ unsigned long micros() {
   // Restore SREG
   SREG = oldSREG;
 
-#if F_CPU >= 20000000L
-  //Technically  m needs to be multiplied by 819,2 
+#if F_CPU >= 24000000L
+  // Technically m needs to be multiplied by 682.67
+  // and t needs to be multiplied by 2.67
+
+  // Multiply m by 
+#elif F_CPU >= 20000000L
+  //Technically  m needs to be multiplied by 819.2 
   // and t needs to be multiplied by 3,2
   // then we add m and t
 
