@@ -24,21 +24,30 @@
 
 // the prescaler is set so that timer0 ticks every 64 clock cycles, and the
 // the overflow handler is called every 256 ticks.
+// 20MHz: An overflow happens every 819.2  microseconds ---> 0,05 (time of a cycle) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
+// 16MHz: An overflow happens every 1024 microseconds
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
 
 // the whole number of milliseconds per timer0 overflow
+// For 20MHz this would be 0 (because of 819)
+// For 16MHz this would be 1 (because of 1024)
 #define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
 // about - 8 and 16 MHz - this doesn't lose precision.)
+// For 16 MHz: 24 (1024 % 1000) gets shiftet right by 3 which results in 3
+// For 20 MHz: 819 (819 % 1000) gets shiftet right by 3 which results in 102 (precision was lost)
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
 #define FRACT_MAX (1000 >> 3)
+// 1000 shift by 2 (to fit in a byte) to the right is 250 (no precision lost)
+#define FRACT_MAX2 (1000 >> 2)
 
 volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
 static unsigned char timer0_fract = 0;
 
+// timer0 interrupt routine ,- is called every time timer0 overflows
 #if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
 ISR(TIM0_OVF_vect)
 #else
@@ -78,18 +87,24 @@ unsigned long millis()
 
 unsigned long micros() {
   unsigned long m;
-  uint8_t oldSREG = SREG, t;
-  
+  uint8_t oldSREG = SREG;
+  // t will be the number where the timer0 counter stopped
+  uint8_t t;
+
+  // Stop all interrupts
   cli();
   m = timer0_overflow_count;
+
+  // TCNT0 : The Timer Counter Register
 #if defined(TCNT0)
   t = TCNT0;
 #elif defined(TCNT0L)
   t = TCNT0L;
 #else
-  #error TIMER 0 not defined
+#error TIMER 0 not defined
 #endif
 
+  // Timer0 Interrupt Flag Register
 #ifdef TIFR0
   if ((TIFR0 & _BV(TOV0)) && (t < 255))
     m++;
@@ -97,10 +112,23 @@ unsigned long micros() {
   if ((TIFR & _BV(TOV0)) && (t < 255))
     m++;
 #endif
-
+  // Restore SREG
   SREG = oldSREG;
-  
+
+#if F_CPU >= 20000000L
+  //Technically  m needs to be multiplied by 819,2 
+  // and t needs to be multiplied by 3,2
+  // then we add m and t
+
+  // Multiply m by 256 (to fit t) and add t
+  m = (m << 8) + t;
+  return m + (m << 1) + (m >> 2) - (m >> 4);
+#else
+  // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
+  // m is multiplied by 4 (since it was already multiplied by 256)
+  // t is multiplied by 4
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+#endif
 }
 
 void delay(unsigned long ms)
