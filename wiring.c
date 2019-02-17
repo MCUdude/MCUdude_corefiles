@@ -86,48 +86,48 @@ unsigned long millis()
 }
 
 unsigned long micros() {
-    unsigned long m;
-    uint8_t oldSREG = SREG;
-    // t will be the number where the timer0 counter stopped
-    uint8_t t;
+  unsigned long m;
+  uint8_t oldSREG = SREG;
+  // t will be the number where the timer0 counter stopped
+  uint8_t t;
 
-    // Stop all interrupts
-    cli();
-    m = timer0_overflow_count;
+  // Stop all interrupts
+  cli();
+  m = timer0_overflow_count;
 
-    // TCNT0 : The Timer Counter Register
+  // TCNT0 : The Timer Counter Register
 #if defined(TCNT0)
-    t = TCNT0;
+  t = TCNT0;
 #elif defined(TCNT0L)
-    t = TCNT0L;
+  t = TCNT0L;
 #else
 #error TIMER 0 not defined
 #endif
 
-    // Timer0 Interrupt Flag Register
+  // Timer0 Interrupt Flag Register
 #ifdef TIFR0
-    if ((TIFR0 & _BV(TOV0)) && (t < 255))
-        m++;
+  if ((TIFR0 & _BV(TOV0)) && (t < 255))
+    m++;
 #else
-    if ((TIFR & _BV(TOV0)) && (t < 255))
-        m++;
+  if ((TIFR & _BV(TOV0)) && (t < 255))
+    m++;
 #endif
-    // Restore SREG
-    SREG = oldSREG;
+  // Restore SREG
+  SREG = oldSREG;
 
 #if F_CPU >= 20000000L
-    //Technically  m needs to be multiplied by 819,2 
-    // and t needs to be multiplied by 3,2
-    // then we add m and t
+  //Technically  m needs to be multiplied by 819,2 
+  // and t needs to be multiplied by 3,2
+  // then we add m and t
 
-    // Multiply m by 256 (to fit t) and add t
-    m = (m << 8) + t;
-    return m + (m << 1) + (m >> 2) - (m >> 4);
+  // Multiply m by 256 (to fit t) and add t
+  m = (m << 8) + t;
+  return m + (m << 1) + (m >> 2) - (m >> 4);
 #else
-    // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
-    // m is multiplied by 4 (since it was already multiplied by 256)
-    // t is multiplied by 4
-    return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+  // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
+  // m is multiplied by 4 (since it was already multiplied by 256)
+  // t is multiplied by 4
+  return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #endif
 }
 
