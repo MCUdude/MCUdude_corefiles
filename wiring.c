@@ -88,13 +88,11 @@ unsigned long millis()
 unsigned long micros() {
     unsigned long m;
     uint8_t oldSREG = SREG;
-
     // t will be the number where the timer0 counter stopped
     uint8_t t;
 
     // Stop all interrupts
     cli();
-
     m = timer0_overflow_count;
 
     // TCNT0 : The Timer Counter Register
