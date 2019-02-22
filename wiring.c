@@ -122,6 +122,8 @@ unsigned long micros() {
   // Technically m needs to be multiplied by 682.67
   // and t needs to be multiplied by 2.67
 
+  m = (m << 8) + t;
+  return m;
 #elif F_CPU >= 20000000L
   //Technically  m needs to be multiplied by 819.2 
   // and t needs to be multiplied by 3,2
