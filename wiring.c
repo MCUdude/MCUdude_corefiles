@@ -122,18 +122,18 @@ unsigned long micros() {
   // Technically m needs to be multiplied by 682.67
   // and t needs to be multiplied by 2.67
 
-  // Multiply m by 
 #elif F_CPU >= 20000000L
   //Technically  m needs to be multiplied by 819.2 
   // and t needs to be multiplied by 3,2
-  // then we add m and t
-
-  // Multiply m by 256 (to fit t) and add t
+  
   m = (m << 8) + t;
   return m + (m << 1) + (m >> 2) - (m >> 4);
+#elif F_CPU >= 18432000L
+  m = (m << 8) + t;
+  return m + (m << 1) + (m >> 1);
 #else
   // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
-  // m is multiplied by 4 (since it was already multiplied by 256)
+  // m & t are multiplied by 4 (since it was already multiplied by 256)
   // t is multiplied by 4
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #endif
