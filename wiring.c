@@ -217,20 +217,21 @@ void delayMicroseconds(unsigned int us)
   us = (us << 2) + us; // x5 us, = 7 cycles
 
   // user wants to wait longer than 10us - here we can use approximation with multiplication
-  if (us > 50) { // 3 cycles
+  if (us <= 50) { // 3 cycles
+    // account for the time taken in the preceeding commands.
+    // we just burned 30 (32) cycles above, remove 8, (8*4=32)
+    // us is at least 10, so we can substract 8
+    us -= 8; // 2 cycles
+  } else {
     // Since the loop is not accurately 1/5 of a microsecond we need
     // to multiply us by 0,9216 (18.432 / 20)
     us = (us >> 1) + (us >> 2) + (us >> 3) + (us >> 4); // x0.9375 us, = 20 cycles (TODO: the cycle count needs to be validated)
 
     // account for the time taken in the preceeding commands.
-    // we just burned 45 (47) cycles above, remove 15, (15*4=64) (TODO: calculate real number of cycles burned)
-    // us is at least 46, so we can substract 15
-    us -= 15; // 2 cycles
-  } else {
-    // account for the time taken in the preceeding commands.
-    // we just burned 30 (32) cycles above, remove 8, (8*4=32)
-    // us is at least 10, so we can substract 8
-    us -= 8; // 2 cycles
+    // we just burned 45 (47) cycles above, remove 12, (12*4=48) (TODO: calculate real number of cycles burned)
+    // additionaly, since we are not 100% precise (we are slower), subtract a bit more to fit for small values
+    // us is at least 46, so we can substract 18
+    us -= 18; // 2 cycles
   }
 #elif F_CPU >= 16000000L
   // for the 16 MHz clock on most Arduino boards
