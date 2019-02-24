@@ -208,7 +208,7 @@ void delayMicroseconds(unsigned int us)
     "nop" "\n\t"
     "nop" "\n\t"
     "nop"); //just waiting 3 cycles
-	
+
   if (us <= 1) return; //  = 3 cycles, (4 when true)
 
   // the following loop takes nearly 1/5 (0.217%) of a microsecond (4 cycles)
@@ -220,7 +220,6 @@ void delayMicroseconds(unsigned int us)
   // we just burned 25 (27) cycles above, remove 6, (6*4=24)
   // us is at least 10 so we can substract 6
   us -= 6; // 2 cycles
-
 
 #elif F_CPU >= 16000000L
   // for the 16 MHz clock on most Arduino boards
