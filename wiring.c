@@ -223,9 +223,9 @@ void delayMicroseconds(unsigned int us)
     us = (us >> 1) + (us >> 2) + (us >> 3) + (us >> 4); // x0.9375 us, = 20 cycles (the cycle count needs to be validated)
 
     // account for the time taken in the preceeding commands.
-    // we just burned 45 (47) cycles above, remove 11, (11*4=44)
-    // us is at least 46, so we can substract 11
-    us -= 11; // 2 cycles
+    // we just burned 45 (47) cycles above, remove 12, (12*4=48)
+    // us is at least 46, so we can substract 12
+    us -= 12; // 2 cycles
   } else {
     // account for the time taken in the preceeding commands.
     // we just burned 30 (32) cycles above, remove 8, (8*4=32)
