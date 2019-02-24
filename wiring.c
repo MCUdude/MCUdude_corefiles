@@ -207,7 +207,8 @@ void delayMicroseconds(unsigned int us)
   __asm__ __volatile__ (
     "nop" "\n\t"
     "nop" "\n\t"
-    "nop"); //just waiting 3 cycles
+	"nop" "\n\t"
+    "nop"); //just waiting 4 cycles
 
   if (us <= 1) return; //  = 3 cycles, (4 when true)
 
