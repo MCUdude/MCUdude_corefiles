@@ -200,6 +200,28 @@ void delayMicroseconds(unsigned int us)
   // us is at least 10 so we can substract 7
   us -= 7; // 2 cycles
 
+#elif F_CPU >= 18432000L
+
+  // for a one-microsecond delay, simply return.  the overhead
+  // of the function call takes 17 (19) cycles, which is aprox. 1us
+  __asm__ __volatile__ (
+    "nop" "\n\t"
+    "nop" "\n\t"
+    "nop"); //just waiting 3 cycles
+	
+  if (us <= 1) return; //  = 3 cycles, (4 when true)
+
+  // the following loop takes nearly 1/5 (0.217%) of a microsecond (4 cycles)
+  // per iteration, so execute it five times for each microsecond of
+  // delay requested.
+  us = (us << 2) + us; // x5 us, = 7 cycles
+
+  // account for the time taken in the preceeding commands.
+  // we just burned 25 (27) cycles above, remove 6, (6*4=24)
+  // us is at least 10 so we can substract 6
+  us -= 6; // 2 cycles
+
+
 #elif F_CPU >= 16000000L
   // for the 16 MHz clock on most Arduino boards
 
