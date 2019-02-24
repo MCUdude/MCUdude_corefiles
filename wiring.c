@@ -220,12 +220,12 @@ void delayMicroseconds(unsigned int us)
   if (us > 50) { // 3 cycles
     // Since the loop is not accurately 1/5 of a microsecond we need
     // to multiply us by 0,9216 (18.432 / 20)
-    us = (us >> 1) + (us >> 2) + (us >> 3) + (us >> 4); // x0.9375 us, = 20 cycles (the cycle count needs to be validated)
+    us = (us >> 1) + (us >> 2) + (us >> 3) + (us >> 4); // x0.9375 us, = 20 cycles (TODO: the cycle count needs to be validated)
 
     // account for the time taken in the preceeding commands.
-    // we just burned 45 (47) cycles above, remove 12, (12*4=48)
-    // us is at least 46, so we can substract 12
-    us -= 12; // 2 cycles
+    // we just burned 45 (47) cycles above, remove 15, (15*4=64) (TODO: calculate real number of cycles burned)
+    // us is at least 46, so we can substract 15
+    us -= 15; // 2 cycles
   } else {
     // account for the time taken in the preceeding commands.
     // we just burned 30 (32) cycles above, remove 8, (8*4=32)
