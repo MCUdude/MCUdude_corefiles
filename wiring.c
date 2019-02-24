@@ -201,13 +201,12 @@ void delayMicroseconds(unsigned int us)
   us -= 7; // 2 cycles
 
 #elif F_CPU >= 18432000L
-
   // for a one-microsecond delay, simply return.  the overhead
   // of the function call takes 17 (19) cycles, which is aprox. 1us
   __asm__ __volatile__ (
     "nop" "\n\t"
     "nop" "\n\t"
-	"nop" "\n\t"
+    "nop" "\n\t"
     "nop"); //just waiting 4 cycles
 
   if (us <= 1) return; //  = 3 cycles, (4 when true)
