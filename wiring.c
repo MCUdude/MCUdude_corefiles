@@ -217,9 +217,9 @@ void delayMicroseconds(unsigned int us)
   us = (us << 2) + us; // x5 us, = 7 cycles
 
   // account for the time taken in the preceeding commands.
-  // we just burned 25 (27) cycles above, remove 6, (6*4=24)
-  // us is at least 10 so we can substract 6
-  us -= 6; // 2 cycles
+  // we just burned 25 (27) cycles above, remove 6, (7*4=28)
+  // us is at least 10 so we can substract 7
+  us -= 7; // 2 cycles
 
 #elif F_CPU >= 16000000L
   // for the 16 MHz clock on most Arduino boards
