@@ -43,8 +43,6 @@
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
 // Shift right by 3 to fit in a byte (results in 125)
 #define FRACT_MAX (1000 >> 3)
-// 1000 shift by 2 (to fit in a byte) to the right is 250 (no precision lost)
-#define FRACT_MAX2 (1000 >> 2)
 
 volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
@@ -119,20 +117,20 @@ unsigned long micros() {
   SREG = oldSREG;
 
 #if F_CPU >= 24000000L
-  // Technically m needs to be multiplied by 682.67
-  // and t needs to be multiplied by 2.67
-
+  // m needs to be multiplied by 682.67
+  // and t by 2.67
   m = (m << 8) + t;
-  return m;
+  return (m<<1) + (m >> 1) + (m >> 3) + (m >> 4); // multiply by 2.6875
 #elif F_CPU >= 20000000L
-  //Technically  m needs to be multiplied by 819.2 
-  // and t needs to be multiplied by 3,2
-  
+  // m needs to be multiplied by 819.2 
+  // t needs to be multiplied by 3.2
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 2) - (m >> 4);
+  return m + (m << 1) + (m >> 2) - (m >> 4); // multiply by 3.1875
 #elif F_CPU >= 18432000L
+  // m needs to be multiplied by 888.88
+  // and t by 3.47
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 1);
+  return m + (m << 1) + (m >> 1); // multiply by 3.5
 #else
   // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
   // m & t are multiplied by 4 (since it was already multiplied by 256)
@@ -216,13 +214,12 @@ void delayMicroseconds(unsigned int us)
   // delay requested.
   us = (us << 2) + us; // x5 us, = 7 cycles
 
-  // user wants to wait longer than 10us - here we can use approximation with multiplication
   if (us <= 50) { // 3 cycles
     // account for the time taken in the preceeding commands.
     // we just burned 30 (32) cycles above, remove 8, (8*4=32)
     // us is at least 10, so we can substract 8
     us -= 8; // 2 cycles
-  } else {
+  } else { // user wants to wait longer than 10us - here we can use approximation with multiplication
     // Since the loop is not accurately 1/5 of a microsecond we need
     // to multiply us by 0,9216 (18.432 / 20)
     us = (us >> 1) + (us >> 2) + (us >> 3) + (us >> 4); // x0.9375 us, = 20 cycles (TODO: the cycle count needs to be validated)
