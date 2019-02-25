@@ -216,7 +216,7 @@ void delayMicroseconds(unsigned int us)
 
   // user wants to wait longer than 9us - here we can use approximation with multiplication
   if (us > 46) { // 3 cycles
-	// Since the loop is not accurately 1/5 of a microsecond we need
+    // Since the loop is not accurately 1/5 of a microsecond we need
     // to multiply us by 0,9216 (18.432 / 20)
     us = (us >> 1) + (us >> 2) + (us >> 3) + (us >> 4); // x0.9375 us, = 20 cycles (TODO: the cycle count needs to be validated)
 
