@@ -24,7 +24,8 @@
 
 // the prescaler is set so that timer0 ticks every 64 clock cycles, and the
 // the overflow handler is called every 256 ticks.
-// 20MHz: An overflow happens every 819.2  microseconds ---> 0,05 (time of a cycle) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
+// 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682 
+// 20MHz: An overflow happens every 819.2 microseconds ---> 0,05 (time of a cycle in micros) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
 // 16MHz: An overflow happens every 1024 microseconds
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
 
@@ -36,12 +37,12 @@
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
 // about - 8 and 16 MHz - this doesn't lose precision.)
-// For 16 MHz: 24 (1024 % 1000) gets shiftet right by 3 which results in 3
-// For 20 MHz: 819 (819 % 1000) gets shiftet right by 3 which results in 102 (precision was lost)
+// For 16 MHz: 24 (1024 % 1000) gets shifted right by 3 which results in 3   (precision was lost)
+// For 20 MHz: 819 (819 % 1000) gets shifted right by 3 which results in 102 (precision was lost)
+// For 24 MHz: 682 (682 % 1000) gets shifted right by 3 which results in 
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
+// Shift right by 3 to fit in a byte (results in 125)
 #define FRACT_MAX (1000 >> 3)
-// 1000 shift by 2 (to fit in a byte) to the right is 250 (no precision lost)
-#define FRACT_MAX2 (1000 >> 2)
 
 volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
@@ -55,7 +56,7 @@ ISR(TIMER0_OVF_vect)
 #endif
 {
   // copy these to local variables so they can be stored in registers
-  // (volatile variables must be read from memory on every access)
+  // (volatile variables must be read from memory on every access, so this saves time)
   unsigned long m = timer0_millis;
   unsigned char f = timer0_fract;
 
@@ -101,7 +102,7 @@ unsigned long micros() {
 #elif defined(TCNT0L)
   t = TCNT0L;
 #else
-#error TIMER 0 not defined
+  #error TIMER 0 not defined
 #endif
 
   // Timer0 Interrupt Flag Register
@@ -115,17 +116,24 @@ unsigned long micros() {
   // Restore SREG
   SREG = oldSREG;
 
-#if F_CPU >= 20000000L
-  //Technically  m needs to be multiplied by 819,2 
-  // and t needs to be multiplied by 3,2
-  // then we add m and t
-
-  // Multiply m by 256 (to fit t) and add t
+#if F_CPU >= 24000000L
+  // m needs to be multiplied by 682.67
+  // and t by 2.67
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 2) - (m >> 4);
+  return (m<<1) + (m >> 1) + (m >> 3) + (m >> 4); // multiply by 2.6875
+#elif F_CPU >= 20000000L
+  // m needs to be multiplied by 819.2 
+  // t needs to be multiplied by 3.2
+  m = (m << 8) + t;
+  return m + (m << 1) + (m >> 2) - (m >> 4); // multiply by 3.1875
+#elif F_CPU >= 18432000L
+  // m needs to be multiplied by 888.88
+  // and t by 3.47
+  m = (m << 8) + t;
+  return m + (m << 1) + (m >> 1); // multiply by 3.5
 #else
   // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
-  // m is multiplied by 4 (since it was already multiplied by 256)
+  // m & t are multiplied by 4 (since it was already multiplied by 256)
   // t is multiplied by 4
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #endif
@@ -190,6 +198,39 @@ void delayMicroseconds(unsigned int us)
   // us is at least 10 so we can substract 7
   us -= 7; // 2 cycles
 
+#elif F_CPU >= 18432000L
+  // for a one-microsecond delay, simply return.  the overhead
+  // of the function call takes 17 (19) cycles, which is aprox. 1us
+  __asm__ __volatile__ (
+    "nop" "\n\t"
+    "nop" "\n\t"
+    "nop" "\n\t"
+    "nop"); //just waiting 4 cycles
+
+  if (us <= 1) return; //  = 3 cycles, (4 when true)
+
+  // the following loop takes nearly 1/5 (0.217%) of a microsecond (4 cycles)
+  // per iteration, so execute it five times for each microsecond of
+  // delay requested.
+  us = (us << 2) + us; // x5 us, = 7 cycles
+
+  // user wants to wait longer than 9us - here we can use approximation with multiplication
+  if (us > 36) { // 3 cycles
+    // Since the loop is not accurately 1/5 of a microsecond we need
+    // to multiply us by 0,9216 (18.432 / 20)
+    us = (us >> 1) + (us >> 2) + (us >> 3) + (us >> 4); // x0.9375 us, = 20 cycles (TODO: the cycle count needs to be validated)
+
+    // account for the time taken in the preceeding commands.
+    // we just burned 45 (47) cycles above, remove 12, (12*4=48) (TODO: calculate real number of cycles burned)
+    // additionaly, since we are not 100% precise (we are slower), subtract a bit more to fit for small values
+    // us is at least 46, so we can substract 18
+    us -= 19; // 2 cycles
+  } else { 
+    // account for the time taken in the preceeding commands.
+    // we just burned 30 (32) cycles above, remove 8, (8*4=32)
+    // us is at least 10, so we can substract 8
+    us -= 8; // 2 cycles
+  }
 #elif F_CPU >= 16000000L
   // for the 16 MHz clock on most Arduino boards
 
