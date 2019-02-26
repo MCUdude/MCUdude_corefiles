@@ -135,8 +135,7 @@ unsigned long micros() {
   // m needs to be multiplied by 1365.33
   // and t by 5.33
   m = (m << 8) + t;
-  return m + (m << 2) + (m >> 2) + (m >> 3) - (m >> 4) // multiply by 5.3125
-  return 
+  return m + (m << 2) + (m >> 2) + (m >> 3) - (m >> 4); // multiply by 5.3125
 #else
   // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
   // m & t are multiplied by 4 (since it was already multiplied by 256)
