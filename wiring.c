@@ -131,6 +131,11 @@ unsigned long micros() {
   // and t by 3.47
   m = (m << 8) + t;
   return m + (m << 1) + (m >> 1); // multiply by 3.5
+#elif F_CPU >= 12000000L && F_CPU != 16000000L
+  // m needs to be multiplied by 1365.33
+  // and t by 5.33
+  m = (m << 8) + t;
+  return m + (m << 2) + (m >> 2) + (m >> 3) - (m >> 4) + (m >> 5); // multiply by 5.3437
 #else
   // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
   // m & t are multiplied by 4 (since it was already multiplied by 256)
