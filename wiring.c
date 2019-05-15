@@ -433,6 +433,8 @@ void init()
   sbi(TCCR2, CS22);
 #elif defined(TCCR2B) && defined(CS22)
   sbi(TCCR2B, CS22);
+#elif defined(TCCR2A) && defined(CS22)
+  sbi(TCCR2A, CS22);
 //#else
   // Timer 2 not finished (may not be present on this CPU)
 #endif
