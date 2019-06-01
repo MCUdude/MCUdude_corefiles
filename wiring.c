@@ -120,23 +120,49 @@ unsigned long micros() {
   // m needs to be multiplied by 682.67
   // and t by 2.67
   m = (m << 8) + t;
-  return (m<<1) + (m >> 1) + (m >> 3) + (m >> 4); // multiply by 2.6875
+  return (m << 1) + (m >> 1) + (m >> 3) + (m >> 4); // Multiply by 2.6875
 #elif F_CPU >= 20000000L
   // m needs to be multiplied by 819.2 
   // t needs to be multiplied by 3.2
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 2) - (m >> 4); // multiply by 3.1875
+  return m + (m << 1) + (m >> 2) - (m >> 4); // Multiply by 3.1875
 #elif F_CPU >= 18432000L
   // m needs to be multiplied by 888.88
   // and t by 3.47
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 1); // multiply by 3.5
+  return m + (m << 1) + (m >> 1); // Multiply by 3.5
+#elif F_CPU >= 14745600L && F_CPU != 16000000L
+  // m needs to be multiplied by 1111.1
+  // and t by 4.34
+  m = (m << 8) + t;
+  return (m << 2) + (m >> 1) - (m >> 3) - (m >> 4); // Multiply by 4.3125
 #elif F_CPU >= 12000000L && F_CPU != 16000000L
   // m needs to be multiplied by 1365.33
   // and t by 5.33
   m = (m << 8) + t;
-  return m + (m << 2) + (m >> 2) + (m >> 3) - (m >> 4) + (m >> 5); // multiply by 5.3437
+  return m + (m << 2) + (m >> 2) + (m >> 3) - (m >> 4) + (m >> 5); // Multiply by 5.3437
+#elif F_CPU >= 11059200L && F_CPU != 16000000L
+  // m needs to be multiplied by 1481.48
+  // and t by 5.78
+  m = (m << 8) + t;
+  return (m << 2) + (m << 1) - (m >> 2) + (m >> 5); // Multiply by 5.78125
+#elif F_CPU == 7372800L
+  // m needs to be multiplied by 2222.22
+  // and t by 8.68
+  m = (m << 8) + t;
+  return (m << 3) + m - (m >> 2) - (m >> 3); // Multiply by 8.625
+#elif F_CPU == 3686400L
+  // m needs to be multiplied by 4444.44
+  // and t by 17.36
+  m = (m << 8) + t;
+  return (m << 4) + m + (m >> 1) - (m >> 3) - (m >> 6); // Multiply by 17.359375
+#elif F_CPU == 1843200L
+  // m needs to be multiplied by 8888.88
+  // and t by 34.72
+  m = (m << 8) + t;
+  return (m << 5) + (m << 1) + (m >> 1) + (m >> 2); // Multiply by 34.75
 #else
+  // 32 MHz, 24 MHz, 16 MHz, 8 MHz, 4 MHz, 1 MHz
   // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
   // m & t are multiplied by 4 (since it was already multiplied by 256)
   // t is multiplied by 4
@@ -407,6 +433,8 @@ void init()
   sbi(TCCR2, CS22);
 #elif defined(TCCR2B) && defined(CS22)
   sbi(TCCR2B, CS22);
+#elif defined(TCCR2A) && defined(CS22)
+  sbi(TCCR2A, CS22);
 //#else
   // Timer 2 not finished (may not be present on this CPU)
 #endif
