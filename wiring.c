@@ -332,24 +332,26 @@ void delayMicroseconds(unsigned int us)
 
 #elif F_CPU >= 1843200L
   // for the weird 1.8432 MHz clock
-  // 1 cycle takes 1.8432 microseconds
-  // in 1 micro 0.542534 cycles are executed
+  // 1 cycle takes 0.542534 microseconds
+  // in 1 micro 1.8432 cycles are executed
 
-  // the overhead of the function call is 14 (16) cycles
-  if (us <= 30) return; //= 3 cycles, (4 when true)
-  if (us <= 35) return; //= 3 cycles, (4 when true), (must be at least 25 if we want to substract 22)
+  // the overhead of the function call is 14 (16) cycles which is 8.68 us
+  if (us <= 9) return; //= 3 cycles, (4 when true)
 
   // compensate for the time taken by the preceeding and next commands (about 22 cycles)
-  us -= 22; // = 2 cycles
-  // the following loop takes 4 microseconds (4 cycles)
-  // per iteration, so execute it us/4 times
-  // us is at least 4, divided by 4 gives us 1 (no zero delay bug)
-  us >>= 1; // us div 4, = 4 cycles
+  us -= 9; // = 2 cycles
+  
+  // the following loop takes 2.17 microseconds (4 cycles)
+  // per iteration, so execute it us/2 (actually us/1.8432) times
+  // for each microsecond request
+  
+  // us is at least 10
+  us >>= 1; // us div 2, = 2 cycles
 
 #else
   // for the 1 MHz internal clock (default settings for common Atmega microcontrollers)
 
-  // the overhead of the function calls is 14 (16) cycles
+  // the overhead of the function calls is 14 (16) cycles, which is 16us
   if (us <= 16) return; //= 3 cycles, (4 when true)
   if (us <= 25) return; //= 3 cycles, (4 when true), (must be at least 25 if we want to substract 22)
 
