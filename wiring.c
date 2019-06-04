@@ -338,14 +338,14 @@ void delayMicroseconds(unsigned int us)
   // The overhead of the function call is 14 (16) cycles which is 8.68 us
   if (us <= 9) return; //= 3 cycles, (4 when true)
   if (us <= 13) return; //= 3 cycles, (4 when true) (must be at least 14 if we want to substract 12)
-	  
+
   // Compensate for the time taken by the preceeding and next commands (about 22 cycles / 12us)
   us -= 12; // = 2 cycles
   
   // The following loop takes 2.17 microseconds (4 cycles)
   // per iteration, so execute it us/2 (actually us/1.8432) times
   // for each microsecond requested
-  
+
   // us is at least 2, so we can divide 2
   us >>= 1; // us div 2, = 2 cycles
 
