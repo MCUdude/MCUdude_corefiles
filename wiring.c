@@ -347,7 +347,7 @@ void delayMicroseconds(unsigned int us)
   // for each microsecond requested
 
   // us is at least 2, so we can divide 2
-  us = (us >> 1) - (us >> 4); // us div 2, = 2 cycles
+  us = (us >> 1) - (us >> 5); // us div 2, = 2 cycles
 
 #else
   // for the 1 MHz internal clock (default settings for common Atmega microcontrollers)
