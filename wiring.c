@@ -341,13 +341,13 @@ void delayMicroseconds(unsigned int us)
 
   // Compensate for the time taken by the preceeding and next commands (about 22 cycles / 12us)
   us -= 12; // = 2 cycles
-  
+
   // The following loop takes 2.17 microseconds (4 cycles)
-  // per iteration, so execute it us/2 (actually us/1.8432) times
+  // per iteration, so execute it us/2 (actually us/2.17 or us*0.4608) times
   // for each microsecond requested
 
   // us is at least 2, so we can divide 2
-  us >>= 1; // us div 2, = 2 cycles
+  us = (us >> 1) - (us >> 4); // us div 2, = 2 cycles
 
 #else
   // for the 1 MHz internal clock (default settings for common Atmega microcontrollers)
@@ -362,7 +362,6 @@ void delayMicroseconds(unsigned int us)
   // per iteration, so execute it us/4 times
   // us is at least 4, divided by 4 gives us 1 (no zero delay bug)
   us >>= 2; // us div 4, = 4 cycles
-
 
 #endif
 
