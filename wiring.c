@@ -192,8 +192,6 @@ void delayMicroseconds(unsigned int us)
   // 2 microseconds) gives delays longer than desired.
   //delay_us(us);
 #if F_CPU >= 32000000L
-  // for the 32 MHz clock for the extreme users, trying to overclock to the max
-
   // zero delay fix
   if (!us) return; //  = 3 cycles, (4 when true)
 
@@ -208,8 +206,6 @@ void delayMicroseconds(unsigned int us)
   us -= 5; //=2 cycles
 
 #elif F_CPU >= 24000000L
-  // for the 24 MHz clock for the aventurous ones, trying to overclock
-
   // zero delay fix
   if (!us) return; //  = 3 cycles, (4 when true)
 
@@ -224,8 +220,6 @@ void delayMicroseconds(unsigned int us)
   us -= 5; //=2 cycles
 
 #elif F_CPU >= 20000000L
-  // for the 20 MHz clock on rare Arduino boards
-
   // for a one-microsecond delay, simply return.  the overhead
   // of the function call takes 18 (20) cycles, which is 1us
   __asm__ __volatile__ (
@@ -280,8 +274,6 @@ void delayMicroseconds(unsigned int us)
   }
 
 #elif F_CPU >= 16000000L
-  // for the 16 MHz clock on most Arduino boards
-
   // for a one-microsecond delay, simply return.  the overhead
   // of the function call takes 14 (16) cycles, which is 1us
   if (us <= 1) return; //  = 3 cycles, (4 when true)
@@ -295,6 +287,30 @@ void delayMicroseconds(unsigned int us)
   // we just burned 19 (21) cycles above, remove 5, (5*4=20)
   // us is at least 8 so we can substract 5
   us -= 5; // = 2 cycles,
+
+#elif F_CPU >= 14745600L
+  // The overhead of the function call is 14 (16) cycles which is ~1 us
+  if (us <= 2)
+    return;
+
+  else if (us <= 9) 
+  {
+    us -= 2; // The requested microseconds are too small to multiplicate correct, so we do an approximation
+    us = (us << 2); // Subtract microseconds that were wasted in this function
+  }
+  else
+  {
+    // The following loop takes 0.27126 microseconds (4 cycles)
+    // per iteration, so execute it us*3.6864 times
+    // for each microsecond requested
+    us = (us << 2) - (us >> 2) - (us >> 4); // multiply with 3.6875
+    us -= 16; // Subtract microseconds that were wasted in this function
+
+     __asm__ __volatile__ (
+    "nop" "\n\t"
+    "nop" "\n\t"
+    "nop"); // Wait 3 cycles to accomodate imprecisions in approximation
+  } 
 
 #elif F_CPU >= 12000000L
   // for the 12 MHz clock if somebody is working with USB
@@ -330,8 +346,98 @@ void delayMicroseconds(unsigned int us)
   // us is at least 6 so we can substract 4
   us -= 4; // = 2 cycles
 
+#elif F_CPU >= 7372800L
+  // The overhead of the function call is 14 (16) cycles which is ~2 us
+  if (us <= 2)
+    return;
+
+  else if (us <= 12)
+  {
+    // The requested microseconds are too small to multiplicate correct, so we do an approximation
+    us -= 2; // Subtract microseconds that were wasted in this function
+    us = us + (us >> 1) - (us >> 4);
+  }
+
+  else
+  {
+    // The following loop takes 0.5425 microseconds (4 cycles)
+    // per iteration, so execute it us*1.8432 times
+    // for each microsecond requested
+    us = (us << 1) - (us >> 3) - (us >> 4) + (us >> 5); // Multiply with 1.84375
+    us -= 24;
+  }
+
+#elif F_CPU >= 4000000L
+  // The overhead of the function call is 14 (16) cycles which is 4 us
+  if (us <= 2)
+    return;
+
+  // Subtract microseconds that were wasted in this function
+  us -= 2;
+
+  // We don't need to multiply here because one request microsecond is exactly one loop cycle
+
+#elif F_CPU >= 3686400L
+  // The overhead of the function call is 14 (16) cycles which is ~6 us
+  if (us <= 7)
+    return;
+
+  else if (us <= 30)
+  {
+    // The requested microseconds are too small to multiplicate correct, so we do an approximation
+    us -= 6; // Subtract microseconds that were wasted in this function
+    us = (us >> 1) + (us >> 2) - (us >> 5); // Multiply with 0.71875
+  }
+
+  else
+  {
+    // The following loop takes 1.085 microseconds (4 cycles)
+    // per iteration, so execute it us*0.9216 times
+    // for each microsecond requested
+    us = us - (us >> 4) - (us >> 6); // multiply with 0.9216
+    us -= 16;  // Subtract microseconds that were wasted in this function
+  }
+
+#elif F_CPU >= 2000000L
+  // The overhead of the function call is 14 (16) cycles which is 8.68 us
+  // Plus the if-statement that takes 3 cycles (4 when true): ~11us
+  if (us <= 13)
+    return;
+
+  // Subtract microseconds that were wasted in this function
+  us -= 11; // 2 cycles
+
+  us = (us >> 1); // 3 cycles
+
+#elif F_CPU >= 1843200L
+  // The overhead of the function call is 14 (16) cycles which is 8 us
+  // Plus the if-statement that takes 3 cycles (4 when true): ~10us
+  if (us <= 13)
+    return;
+
+  else if(us <= 49)
+  {
+    // The requested microseconds are too small to multiplicate correct, so we do an approximation
+    // The following loop takes 2.17 microseconds (4 cycles)
+    // per iteration, so execute it actually us/2 times
+    // for each microsecond requested
+    us -= 12;
+    us = (us >> 1);
+  }
+
+  else
+  {
+    // The following loop takes 2.17 microseconds (4 cycles)
+    // per iteration, so execute it actually us/2.17 or in different words us*0.4608 times
+    // for each microsecond requested
+    us = (us >> 1) - (us >> 4) + (us >> 5) - (us >> 7);
+
+    // Subtract microseconds that were wasted in this function
+    us -= 21;
+  }
+
 #else
-  // for the 1 MHz internal clock (default settings for common Atmega microcontrollers)
+  // for the 1 MHz internal clock (default settings for most ATmega microcontrollers)
 
   // the overhead of the function calls is 14 (16) cycles
   if (us <= 16) return; //= 3 cycles, (4 when true)
