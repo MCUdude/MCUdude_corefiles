@@ -248,7 +248,8 @@ void delayMicroseconds(unsigned int us)
     "nop" "\n\t"
     "nop"); //just waiting 4 cycles
 
-  if (us <= 1) return; //  = 3 cycles, (4 when true)
+  if (us <= 1) //  = 3 cycles, (4 when true)
+    return;
 
   // the following loop takes nearly 1/5 (0.217%) of a microsecond (4 cycles)
   // per iteration, so execute it five times for each microsecond of
@@ -256,7 +257,8 @@ void delayMicroseconds(unsigned int us)
   us = (us << 2) + us; // x5 us, = 7 cycles
 
   // user wants to wait longer than 9us - here we can use approximation with multiplication
-  if (us > 36) { // 3 cycles
+  if (us > 36) // 3 cycles
+  {
     // Since the loop is not accurately 1/5 of a microsecond we need
     // to multiply us by 0,9216 (18.432 / 20)
     us = (us >> 1) + (us >> 2) + (us >> 3) + (us >> 4); // x0.9375 us, = 20 cycles (TODO: the cycle count needs to be validated)
@@ -266,7 +268,10 @@ void delayMicroseconds(unsigned int us)
     // additionaly, since we are not 100% precise (we are slower), subtract a bit more to fit for small values
     // us is at least 46, so we can substract 18
     us -= 19; // 2 cycles
-  } else { 
+  } 
+  
+  else 
+  { 
     // account for the time taken in the preceeding commands.
     // we just burned 30 (32) cycles above, remove 8, (8*4=32)
     // us is at least 10, so we can substract 8
@@ -328,6 +333,24 @@ void delayMicroseconds(unsigned int us)
   // we just burned 20 (22) cycles above, remove 5, (5*4=20)
   // us is at least 6 so we can substract 5
   us -= 5; //2 cycles
+
+#elif F_CPU >= 11059200L
+  // The overhead of the function call is 14 (16) cycles which is ~2 us
+  if (us <= 2)
+    return;
+
+  else if (us <= 5)
+  {
+    // The requested microseconds are too small to multiplicate correct, so we do an approximation
+    us -= 2; // Subtract microseconds that were wasted in this function
+    us = (us << 1) + (us >> 1) - (us >> 2);
+  }
+
+  else
+  {
+    us = (us << 1) + (us >> 1) + (us >> 2) + (us >> 5); // multiply with 2.78125
+    us -= 14; // Subtract microseconds that were wasted in this function
+  }
 
 #elif F_CPU >= 8000000L
   // for the 8 MHz internal clock
