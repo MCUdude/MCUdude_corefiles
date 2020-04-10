@@ -489,7 +489,12 @@ void init()
   // this needs to be called before setup() or some functions won't
   // work there
   sei();
-  
+
+  // Set internal oscillator prescaler if defined (in boards.txt)
+#if defined(CLKPR) && defined(OSC_PRESCALER)
+  CLKPR = OSC_PRESCALER;
+#endif
+
   // on the ATmega168, timer 0 is also used for fast hardware pwm
   // (using phase-correct PWM would mean that timer 0 overflowed half as often
   // resulting in different millis() behavior on the ATmega8 and ATmega168)
