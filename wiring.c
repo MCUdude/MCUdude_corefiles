@@ -492,7 +492,8 @@ void init()
 
   // Set internal oscillator prescaler if defined (in boards.txt)
 #if defined(CLKPR) && defined(OSC_PRESCALER)
-  CLKPR = OSC_PRESCALER;
+  CLKPR = 0x80;          // Enable prescaler
+  CLKPR = OSC_PRESCALER; // Set prescaler
 #endif
 
   // on the ATmega168, timer 0 is also used for fast hardware pwm
