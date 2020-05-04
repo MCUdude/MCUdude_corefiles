@@ -62,6 +62,8 @@ class Print
     // should be overriden by subclasses with buffering
     virtual int availableForWrite() { return 0; }
 
+    virtual void flush() { /* Empty implementation for backward compatibility */ }
+
     size_t print(const __FlashStringHelper *);
     size_t print(const String &);
     size_t print(const char[]);
