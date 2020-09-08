@@ -496,152 +496,118 @@ void init()
   CLKPR = OSC_PRESCALER; // Set prescaler
 #endif
 
-  // on the ATmega168, timer 0 is also used for fast hardware pwm
+  // On the ATmega168, timer 0 is also used for fast hardware pwm
   // (using phase-correct PWM would mean that timer 0 overflowed half as often
   // resulting in different millis() behavior on the ATmega8 and ATmega168)
 #if defined(TCCR0A) && defined(WGM01)
-  sbi(TCCR0A, WGM01);
-  sbi(TCCR0A, WGM00);
+  TCCR0A |= _BV(WGM01) | _BV(WGM00);
 #endif
 
-  // set timer 0 prescale factor to 64
+  // Set timer 0 prescale factor to 64
 #if defined(__AVR_ATmega64__) || defined(__AVR_ATmega128__)
   // CPU specific: different values for the ATmega64/128
-  sbi(TCCR0, WGM00);
-  sbi(TCCR0, WGM01);
-  sbi(TCCR0, CS02);
+  TCCR0 |= _BV(WGM01) | _BV(WGM00) | _BV(CS02);
 #elif defined(TCCR0) && defined(CS01) && defined(CS00)
-  // this combination is for the ATmega8535, ATmega8, ATmega16, ATmega32, ATmega8515, ATmega162
-  sbi(TCCR0, CS01);
-  sbi(TCCR0, CS00);
-    #if defined(WGM00) && defined(WGM01) // The ATmega8 doesn't have WGM00 and WGM01
-    sbi(TCCR0, WGM00);
-    sbi(TCCR0, WGM01);
+  // This combination is for the ATmega8535, ATmega8, ATmega16, ATmega32, ATmega8515, ATmega162
+  TCCR0 |= _BV(CS01) | _BV(CS00);
+  #if defined(WGM00) && defined(WGM01) // The ATmega8 doesn't have WGM00 and WGM01
+    TCCR0 |= _BV(WGM01) | _BV(WGM00);
   #endif
 #elif defined(TCCR0B) && defined(CS01) && defined(CS00)
-  // this combination is for the standard 168/328/640/1280/1281/2560/2561
-  sbi(TCCR0B, CS01);
-  sbi(TCCR0B, CS00);
+  // This combination is for the standard 168/328/640/1280/1281/2560/2561
+  TCCR0B |= _BV(CS01) | _BV(CS00);
 #elif defined(TCCR0A) && defined(CS01) && defined(CS00)
-  // this combination is for the __AVR_ATmega645__ series
-  sbi(TCCR0A, CS01);
-  sbi(TCCR0A, CS00);
+  // This combination is for the __AVR_ATmega645__ series
+  TCCR0A |= _BV(CS01) | _BV(CS00);
 #else
   #error Timer 0 prescale factor 64 not set correctly
 #endif
 
-  // enable timer 0 overflow interrupt
+// Enable timer 0 overflow interrupt
 #if defined(TIMSK) && defined(TOIE0)
-  sbi(TIMSK, TOIE0);
+  TIMSK |= _BV(TOIE0);
 #elif defined(TIMSK0) && defined(TOIE0)
-  sbi(TIMSK0, TOIE0);
+  TIMSK0 |= _BV(TOIE0);
 #else
   #error  Timer 0 overflow interrupt not set correctly
 #endif
 
-  // timers 1 and 2 are used for phase-correct hardware pwm
-  // this is better for motors as it ensures an even waveform
-  // note, however, that fast pwm mode can achieve a frequency of up
-  // 8 MHz (with a 16 MHz clock) at 50% duty cycle
+// Timers 1 and 2 are used for phase-correct hardware pwm
+// this is better for motors as it ensures an even waveform
+// note, however, that fast pwm mode can achieve a frequency of up
+// 8 MHz (with a 16 MHz clock) at 50% duty cycle
 
 #if defined(TCCR1B) && defined(CS11) && defined(CS10)
-  TCCR1B = 0;
-
-  // set timer 1 prescale factor to 64
-  sbi(TCCR1B, CS11);
+  TCCR1B = _BV(CS11); // Set timer 1 prescale factor to 64
 #if F_CPU >= 8000000L
-  sbi(TCCR1B, CS10);
+  TCCR1B |= _BV(CS10);
 #endif
 #elif defined(TCCR1) && defined(CS11) && defined(CS10)
-  sbi(TCCR1, CS11);
+  TCCR1 |= _BV(CS11);
 #if F_CPU >= 8000000L
-  sbi(TCCR1, CS10);
+  TCCR1 |= _BV(CS10);
 #endif
 #endif
-  // put timer 1 in 8-bit phase correct pwm mode
 #if defined(TCCR1A) && defined(WGM10)
-  sbi(TCCR1A, WGM10);
+  TCCR1A |= _BV(WGM10); // Put timer 1 in 8-bit phase correct pwm mode
 #endif
 
-  // set timer 2 prescale factor to 64
+// Set timer 2 prescale factor to 64
 #if defined(TCCR2) && defined(CS22)
-  sbi(TCCR2, CS22);
+  TCCR2 |= _BV(CS22);
 #elif defined(TCCR2B) && defined(CS22)
-  sbi(TCCR2B, CS22);
+  TCCR2B |= _BV(CS22);
 #elif defined(TCCR2A) && defined(CS22)
-  sbi(TCCR2A, CS22);
-//#else
-  // Timer 2 not finished (may not be present on this CPU)
+  TCCR2A |= _BV(CS22);
 #endif
 
-  // configure timer 2 for phase correct pwm (8-bit)
+// Configure timer 2 for phase correct pwm (8-bit)
 #if defined(TCCR2) && defined(WGM20)
-  sbi(TCCR2, WGM20);
+  TCCR2 |= _BV(WGM20);
 #elif defined(TCCR2A) && defined(WGM20)
-  sbi(TCCR2A, WGM20);
+  TCCR2A |= _BV(WGM20);
 //#else
   // Timer 2 not finished (may not be present on this CPU)
 #endif
 
 #if defined(TCCR3B) && defined(CS31) && defined(WGM30)
-  sbi(TCCR3B, CS31);    // set timer 3 prescale factor to 64
-  sbi(TCCR3B, CS30);
-  sbi(TCCR3A, WGM30);   // put timer 3 in 8-bit phase correct pwm mode
+  TCCR3B |= _BV(CS31) | _BV(CS30); // Set timer 3 prescale factor to 64
+  TCCR3A |= _BV(WGM30);            // Put timer 3 in 8-bit phase correct pwm mode
 #endif
 
-#if defined(TCCR4A) && defined(TCCR4B) && defined(TCCR4D) /* beginning of timer4 block for 32U4 and similar */
-  sbi(TCCR4B, CS42);    // set timer4 prescale factor to 64
-  sbi(TCCR4B, CS41);
-  sbi(TCCR4B, CS40);
-  sbi(TCCR4D, WGM40);   // put timer 4 in phase- and frequency-correct PWM mode 
-  sbi(TCCR4A, PWM4A);   // enable PWM mode for comparator OCR4A
-  sbi(TCCR4C, PWM4D);   // enable PWM mode for comparator OCR4D
-#else /* beginning of timer4 block for ATMEGA640, ATMEGA1280 and ATMEGA2560 */
-#if defined(TCCR4B) && defined(CS41) && defined(WGM40)
-  sbi(TCCR4B, CS41);    // set timer 4 prescale factor to 64
-  sbi(TCCR4B, CS40);
-  sbi(TCCR4A, WGM40);   // put timer 4 in 8-bit phase correct pwm mode
+#if defined(TCCR4A) && defined(TCCR4B) && defined(TCCR4D)
+  TCCR4B |= _BV(CS42) | _BV(CS41) | _BV(CS40); // Set timer 4 prescale factor to 64
+  TCCR4D |= _BV(WGM40);                        // Put timer 4 in phase- and frequency-correct PWM mode 
+  TCCR4A |= _BV(PWM4A);                        // Enable PWM mode for comparator OCR4A
+  TCCR4C |= _BV(PWM4D);                        // Enable PWM mode for comparator OCR4D 
+#elif defined(TCCR4B) && defined(CS41) && defined(WGM40)
+  TCCR4B |= _BV(CS41) | _BV(CS40); // Set timer 4 prescale factor to 64
+  TCCR4A |= _BV(WGM40);            // Put timer 4 in 8-bit phase correct pwm mode
 #endif
-#endif /* end timer4 block for ATMEGA640/1280/2560 and similar */ 
 
 #if defined(TCCR5B) && defined(CS51) && defined(WGM50)
-  sbi(TCCR5B, CS51);    // set timer 5 prescale factor to 64
-  sbi(TCCR5B, CS50);
-  sbi(TCCR5A, WGM50);   // put timer 5 in 8-bit phase correct pwm mode
+  TCCR5B |= _BV(CS51) | _BV(CS50); // Set timer 5 prescale factor to 64
+  TCCR5A |= _BV(WGM50);            // Put timer 5 in 8-bit phase correct pwm mode
 #endif
 
 #if defined(ADCSRA)
   // set a2d prescaler so we are inside the desired 50-200 KHz range.
   #if F_CPU >= 16000000 // 16 MHz / 128 = 125 KHz
-    sbi(ADCSRA, ADPS2);
-    sbi(ADCSRA, ADPS1);
-    sbi(ADCSRA, ADPS0);
+    ADCSRA = _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0) | _BV(ADEN);
   #elif F_CPU >= 8000000 // 8 MHz / 64 = 125 KHz
-    sbi(ADCSRA, ADPS2);
-    sbi(ADCSRA, ADPS1);
-    cbi(ADCSRA, ADPS0);
+    ADCSRA = _BV(ADPS2) | _BV(ADPS1) | _BV(ADEN);
   #elif F_CPU >= 4000000 // 4 MHz / 32 = 125 KHz
-    sbi(ADCSRA, ADPS2);
-    cbi(ADCSRA, ADPS1);
-    sbi(ADCSRA, ADPS0);
+    ADCSRA = _BV(ADPS2) | _BV(ADPS0) | _BV(ADEN);
   #elif F_CPU >= 2000000 // 2 MHz / 16 = 125 KHz
-    sbi(ADCSRA, ADPS2);
-    cbi(ADCSRA, ADPS1);
-    cbi(ADCSRA, ADPS0);
+    ADCSRA = _BV(ADPS2) | _BV(ADEN);
   #elif F_CPU >= 1000000 // 1 MHz / 8 = 125 KHz
-    cbi(ADCSRA, ADPS2);
-    sbi(ADCSRA, ADPS1);
-    sbi(ADCSRA, ADPS0);
+    ADCSRA = _BV(ADPS1) | _BV(ADPS0) | _BV(ADEN);
   #else // 128 kHz / 2 = 64 KHz -> This is the closest you can get, the prescaler is 2
-    cbi(ADCSRA, ADPS2);
-    cbi(ADCSRA, ADPS1);
-    sbi(ADCSRA, ADPS0);
+    ADCSRA = _BV(ADPS0) | _BV(ADEN);
   #endif
-  // enable a2d conversions
-  sbi(ADCSRA, ADEN);
 #endif
 
-  // the bootloader connects pins 0 and 1 to the USART; disconnect them
+  // The bootloader connects pins 0 and 1 to the USART; disconnect them
   // here so they can be used as normal digital i/o; they will be
   // reconnected in Serial.begin()
 #if defined(UCSRB)
