@@ -574,7 +574,7 @@ void delayMicroseconds(unsigned int us)
     us -= 12; // 2 cycles
 
     us >>= 1; // division by 2 = 2 cycles
-	          // 2 cycles to jump back to delay cycle.
+              // 2 cycles to jump back to delay cycle.
   }
 
 #else
