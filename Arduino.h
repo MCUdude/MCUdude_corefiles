@@ -172,7 +172,7 @@ void analogWrite(uint8_t pin, int value);
 unsigned long millis(void);
 unsigned long micros(void);
 void delay(unsigned long ms);
-void delayMicroseconds(unsigned int us);
+void delayMicroseconds(unsigned int us) __attribute__ ((noinline));
 unsigned long pulseIn(uint8_t pin, uint8_t state, unsigned long timeout);
 unsigned long pulseInLong(uint8_t pin, uint8_t state, unsigned long timeout);
 
