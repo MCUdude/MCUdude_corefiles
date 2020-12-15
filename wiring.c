@@ -64,6 +64,7 @@ static unsigned char timer0_fract = 0;
 //               Do it the same way for the remaining odd cases.
 // This way we correct losses from both the rounding to usecs and the shift.
 #if F_CPU == 24000000L || \
+    F_CPU == 22118400L || \
     F_CPU == 20000000L || \
     F_CPU == 18432000L || \
     F_CPU == 14745600L || \
@@ -77,6 +78,9 @@ static unsigned char correct_exact = 0;
 #if F_CPU == 24000000L          // for 24 MHz we get 85.33, off by 1./3.
 #define CORRECT_LO
 #define CORRECT_ROLL 3
+#elif F_CPU == 22118400L        // for 22.1184 MHz we get 92 + 16./27.
+#define CORRECT_BRUTE 16
+#define CORRECT_ROLL 27
 #elif F_CPU == 20000000L        // for 20 MHz we get 102.4, off by 2./5.
 #define CORRECT_ODD
 #define CORRECT_ROLL 5
