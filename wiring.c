@@ -63,7 +63,8 @@ static unsigned char timer0_fract = 0;
 //               Correct brute force by counting 5 out of 27.
 //               Do it the same way for the remaining odd cases.
 // This way we correct losses from both the rounding to usecs and the shift.
-#if F_CPU == 20000000L || \
+#if F_CPU == 24000000L || \
+    F_CPU == 20000000L || \
     F_CPU == 18432000L || \
     F_CPU == 14745600L || \
     F_CPU == 12000000L || \
@@ -73,7 +74,10 @@ static unsigned char timer0_fract = 0;
     F_CPU ==  1843200L
 #define CORRECT_EXACT
 static unsigned char correct_exact = 0;
-#if F_CPU == 20000000L          // for 20 MHz we get 102.4, off by 2./5.
+#if F_CPU == 24000000L          // for 24 MHz we get 85.33, off by 1./3.
+#define CORRECT_LO
+#define CORRECT_ROLL 3
+#elif F_CPU == 20000000L        // for 20 MHz we get 102.4, off by 2./5.
 #define CORRECT_ODD
 #define CORRECT_ROLL 5
 #elif F_CPU == 18432000L        // for 18.432 MHz we get 111.11, off by 1./9.
@@ -118,7 +122,7 @@ ISR(TIMER0_OVF_vect)
 #ifdef CORRECT_EXACT
   // correct millis () to be exact for certain clocks
   if (++correct_exact == CORRECT_ROLL) {
-        correct_exact = 0;
+    correct_exact = 0;
 #ifdef CORRECT_LO
     ++f;
 #endif
