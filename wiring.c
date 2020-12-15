@@ -116,14 +116,17 @@ unsigned long micros() {
   // Restore SREG
   SREG = oldSREG;
 
-#if F_CPU >= 24000000L && F_CPU < 32000000L
+#if F_CPU >= 32000000L
+  // we need to put this #if here to avoid entering the wrong branch for 32 MHz
+  return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+#elif F_CPU >= 24000000L
   // m needs to be multiplied by 682.67
   // and t by 2.67
   m = (m << 8) + t;
   return (m << 1) + (m >> 1) + (m >> 3) + (m >> 4); // Multiply by 2.6875
 #elif F_CPU >= 20000000L
-  // m needs to be multiplied by 819.2 
-  // and t by 3.2 ~ 819 / 256. for an error of 1 in 4000
+  // m needs to be multiplied by 819.2
+  // and t by 16. / 5. = 3.2 ~ 819 / 256. for an error of 1 in 4000
   m = (m << 8) + t;
   return m + (m << 1) + (m >> 2) - (m >> 4) + (m >> 6) - (m >> 8);
 #elif F_CPU >= 18432000L
