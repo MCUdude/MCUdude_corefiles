@@ -61,12 +61,15 @@ static unsigned char timer0_fract = 0;
 //               Correct by adding 2 out of 5 times: every odd number in 0..4.
 // A special case for 11.0592 MHz: FRACT_INC is too low by 5. / 27.
 //               Correct brute force by counting 5 out of 27.
+//               Do it the same way for the remaining odd cases.
 // This way we correct losses from both the rounding to usecs and the shift.
 #if F_CPU == 20000000L || \
     F_CPU == 18432000L || \
     F_CPU == 14745600L || \
     F_CPU == 12000000L || \
     F_CPU == 11059200L || \
+    F_CPU ==  7372800L || \
+    F_CPU ==  3686400L || \
     F_CPU ==  1843200L
 #define CORRECT_EXACT
 static unsigned char correct_exact = 0;
@@ -83,8 +86,14 @@ static unsigned char correct_exact = 0;
 #define CORRECT_HI
 #define CORRECT_ROLL 3
 #elif F_CPU == 11059200L        // for 11.0592 MHz we get 60 + 5./27.
-#define CORRECT_FIVE
+#define CORRECT_BRUTE 5
 #define CORRECT_ROLL 27
+#elif F_CPU == 7372800L         // for 7.372800 MHz we get 27 + 7./9.
+#define CORRECT_BRUTE 7
+#define CORRECT_ROLL 9
+#elif F_CPU == 3686400L         // for 3.686400 MHz we get 55 + 5./9.
+#define CORRECT_BRUTE 5
+#define CORRECT_ROLL 9
 #elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
 #define CORRECT_LO
 #define CORRECT_ROLL 9
@@ -124,8 +133,8 @@ ISR(TIMER0_OVF_vect)
     ++f;
   }
 #endif
-#ifdef CORRECT_FIVE
-  if (correct_exact < 5) {
+#ifdef CORRECT_BRUTE
+  if (correct_exact < CORRECT_BRUTE) {
     ++f;
   }
 #endif
