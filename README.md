@@ -4,6 +4,7 @@
 This repo contains the Arduino corefiles used with [MightyCore](https://github.com/MCUdude/MightyCore), [MegaCore](https://github.com/MCUdude/MegaCore), [MiniCore](https://github.com/MCUdude/MiniCore) and [MajorCore](https://github.com/MCUdude/MightyCore).
 
 ## Supported devices
+
 * ATmega640, ATmega1280, ATmega2560
 * ATmega64, ATmega128, ATmega1281, ATmega2561
 * AT90CAN32, AT90CAN64, AT90CAN128
@@ -12,7 +13,9 @@ This repo contains the Arduino corefiles used with [MightyCore](https://github.c
 * ATmega8, ATmega48/P/PA/PB, ATmega88/P/PA/PB, ATmega168/P/PA/PB, ATmega328/P/PA/PB
 
 ## Supported clock frequencies
-By supported I mean clocks that accurate timing is implemented for (millis, micros, delay, delayMicroseconds).
+By supported I mean clocks that accurate timing is implemented for (millis,
+micros, delay, delayMicroseconds).
+
 * 32 MHz
 * 24 MHz
 * 20 MHz
@@ -28,3 +31,16 @@ By supported I mean clocks that accurate timing is implemented for (millis, micr
 * 2 MHz
 * 1.8432 MHz
 * 1 MHz
+
+### Accuracy of `micros()` and `delay()`
+
+The `micros()` function has zero drift for power-of-two clock frequencies.
+After that, the following frequencies have the lowest drift error:
+
+* 18.432 Mhz has a drift of 1 in 8000 (125 ppm)
+* 20 MHz has a drift of 1 in 4000 (250 ppm)
+* 22.1184 MHz has a drift of 1 in 2850 (350ppm)
+
+The remaining frequencies have drifts around 1 percent or lower.
+
+The `delay()` function uses `micros()` internally and inherits its accuracy.
