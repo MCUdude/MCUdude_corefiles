@@ -140,6 +140,12 @@ unsigned long micros() {
   // and t by 125. / 36. ~ 3.472 ~ 889. / 256. for an error of 1 in 8000
   m = (m << 8) + t;
   return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8);
+#elif F_CPU >= 18000000L
+  // m needs to be multiplied by 910.22
+  // and t by 3.556 ~ 910. / 256. for an error of 1 in 4000
+  m = (m << 8) + t;
+  m = (m << 2) - (m >> 1);
+  return m + (m >> 6);
 #elif F_CPU >= 14745600L && F_CPU != 16000000L
   // m needs to be multiplied by 1111.1
   // and t by 4.34
