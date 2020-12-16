@@ -135,12 +135,17 @@ unsigned long micros() {
   // and t by 16. / 5. = 3.2 ~ 819 / 256. for an error of 1 in 4000
   m = (m << 8) + t;
   m = (m << 2) - m;
-  return m + (m >> 4) + (m >> 8);
+  // return m + (m >> 4) + (m >> 8);
+  // improve further to 3.19995 ~ 13107 / 4096. for an error of 15 ppm
+  m += (m >> 4);
+  return m + (m >> 8);
 #elif F_CPU >= 18432000L
   // m needs to be multiplied by 888.89
   // and t by 125. / 36. ~ 3.472 ~ 889. / 256. for an error of 1 in 8000
   m = (m << 8) + t;
-  return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8);
+  // return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8);
+  // improve further to 3.47217 ~ 7111. / 2048. for an error of 16 ppm
+  return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8) - (m >> 11);
 #elif F_CPU >= 18000000L
   // m needs to be multiplied by 910.22
   // and t by 3.556 ~ 910. / 256. for an error of 1 in 4000

@@ -37,9 +37,9 @@ micros, delay, delayMicroseconds).
 The `micros()` function has zero drift for power-of-two clock frequencies.
 After that, the following frequencies have the lowest drift error:
 
-* 18.432 Mhz has a drift of 1 in 8000 (125 ppm)
+* 20 MHz has a drift of 1 in 65536 (~15 ppm)
+* 18.432 Mhz has a drift of  1 in 64000 (~16 ppm)
 * 24 MHz has a drift of 1 in 4000 (250 ppm)
-* 20 MHz has a drift of 1 in 4000
 * 18 MHz has a drift of 1 in 4000
 * 22.1184 MHz has a drift of 1 in 2850 (350ppm)
 
