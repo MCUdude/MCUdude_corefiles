@@ -180,13 +180,13 @@ unsigned long micros() {
 
 void delay(unsigned long ms)
 {
-  uint32_t start = micros();
+  unsigned long start = micros();
 
-  while (ms > 0) {
+  while (ms > 0UL) {
     yield();
-    while ( ms > 0 && (micros() - start) >= 1000) {
+    while (ms > 0UL && (micros() - start) >= 1000UL) {
       ms--;
-      start += 1000;
+      start += 1000UL;
     }
   }
 }
@@ -201,7 +201,7 @@ void delay(unsigned long ms)
  * In Arduino IDE 1.6.11 and newer LTO is enabled by default.  The LTO optimizes the code
  * at link time, making the code (often) significantly smaller without making it "slower"
  * and sometimes destroy acccurate software timings like delayMicroseconds() with lower values.
- * To avoid LTO optimization, the line of delayMicrosecons() definition in arduino.h must be replace to this:
+ * To avoid LTO optimization, the line of delayMicroseconds() definition in arduino.h must be replace to this:
  * void delayMicroseconds(unsigned int) __attribute__ ((noinline)) ;
  */
 void delayMicroseconds(unsigned int us)
