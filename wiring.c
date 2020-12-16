@@ -153,20 +153,21 @@ unsigned long micros() {
   m = (m << 2) - (m >> 1);
   return m + (m >> 6);
 #elif F_CPU >= 14745600L && F_CPU != 16000000L
-  // m needs to be multiplied by 1111.1
-  // and t by 4.34
+  // m needs to be multiplied by 1111.11
+  // and t by 4.34 ~ 1111. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 2) + (m >> 1) - (m >> 3) - (m >> 4); // Multiply by 4.3125
+  return (m << 2) + (m >> 1) - (m >> 3) - (m >> 5) - (m >> 8);
 #elif F_CPU >= 12000000L && F_CPU != 16000000L
   // m needs to be multiplied by 1365.33
-  // and t by 5.33
+  // and t by 5.33 ~ 1365. / 256. for an error of 1 in 4000
   m = (m << 8) + t;
-  return m + (m << 2) + (m >> 2) + (m >> 3) - (m >> 4) + (m >> 5); // Multiply by 5.3437
+  m += (m << 2) + (m >> 2);
+  return m + (m >> 6);
 #elif F_CPU >= 11059200L && F_CPU != 16000000L
   // m needs to be multiplied by 1481.48
-  // and t by 5.78
+  // and t by 5.789 ~ 1482. / 256. for an error of 1 in 2850
   m = (m << 8) + t;
-  return (m << 2) + (m << 1) - (m >> 2) + (m >> 5); // Multiply by 5.78125
+  return (m << 3) - (m << 1) - (m >> 2) + (m >> 5) + (m >> 7);
 #elif F_CPU == 7372800L
   // m needs to be multiplied by 2222.22
   // and t by 8.68

@@ -39,10 +39,13 @@ After that, the following frequencies have the lowest drift error:
 
 * 20 MHz has a drift of 1 in 65536 (~15 ppm)
 * 18.432 Mhz has a drift of  1 in 64000 (~16 ppm)
+* 14.7456 MHz has a drift of 1 in 10000 (100 ppm)
 * 24 MHz has a drift of 1 in 4000 (250 ppm)
 * 18 MHz has a drift of 1 in 4000
+* 12 MHz has a drift of 1 in 4000
 * 22.1184 MHz has a drift of 1 in 2850 (350ppm)
+* 11.0592 MHz has a drift of 1 in 2850
 
-The remaining frequencies have drifts around 1 percent or lower.
+The remaining frequencies have drifts around 1 percent or better.
 
 The `delay()` function uses `micros()` internally and inherits its accuracy.
