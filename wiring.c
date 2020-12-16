@@ -74,6 +74,7 @@ static unsigned char timer0_fract = 0;
     F_CPU == 22118400L || \
     F_CPU == 20000000L || \
     F_CPU == 18432000L || \
+    F_CPU == 18000000L || \
     F_CPU == 14745600L || \
     F_CPU == 12000000L || \
     F_CPU == 11059200L || \
@@ -93,6 +94,9 @@ static unsigned char correct_exact = 0;
 #define CORRECT_ROLL 5
 #elif F_CPU == 18432000L        // for 18.432 MHz we get 111.11, off by 1./9.
 #define CORRECT_LO
+#define CORRECT_ROLL 9
+#elif F_CPU == 18000000L        // for 18 MHz we get 113.78, off by 7./9.
+#define CORRECT_BRUTE 7
 #define CORRECT_ROLL 9
 #elif F_CPU == 14745600L        // for 14.7456 MHz we get 13.89, off by 8./9.
 #define CORRECT_HI
