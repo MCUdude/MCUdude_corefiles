@@ -27,7 +27,14 @@
 // 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682 
 // 20MHz: An overflow happens every 819.2 microseconds ---> 0,05 (time of a cycle in micros) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
 // 16MHz: An overflow happens every 1024 microseconds
+#if 0
+// this would be inaccurate for non-power-of-two frequencies
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
+#else
+// it is vital to avoid unnecessary roundoff in this calculation
+#define MICROSECONDS_PER_TIMER0_OVERFLOW \
+  (64ULL * 256ULL * 1000000ULL / (unsigned long long) F_CPU)
+#endif
 
 // the whole number of milliseconds per timer0 overflow
 // For 20MHz this would be 0 (because of 819)
