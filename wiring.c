@@ -121,9 +121,10 @@ unsigned long micros() {
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #elif F_CPU >= 24000000L
   // m needs to be multiplied by 682.67
-  // and t by 2.67
+  // and t by 2.667 ~ 1365 / 512. for an error of 1 in 4000
   m = (m << 8) + t;
-  return (m << 1) + (m >> 1) + (m >> 3) + (m >> 4); // Multiply by 2.6875
+  m = (m << 1) + (m >> 1) + (m >> 3);
+  return m + (m >> 6);
 #elif F_CPU >= 22118400L
   // m needs to be multiplied by 740.74
   // and t by 2.894 ~ 741 / 256. for an error of 1 in 2850
