@@ -31,9 +31,13 @@
 // this would be inaccurate for non-power-of-two frequencies
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
 #else
-// it is vital to avoid unnecessary roundoff in this calculation
-#define MICROSECONDS_PER_TIMER0_OVERFLOW \
-  (64ULL * 256ULL * 1000000ULL / (unsigned long long) F_CPU)
+// It is vital to avoid unnecessary roundoff in this calculation.
+// What we really want to compute is the number of microseconds in one
+// timer cycle, thus 64 * 256 * 1e6 / F_CPU.  When calculating with integers,
+// the product 64 * 256 * 1000**2 overflows an unsigned long.  We resolve this
+// by recognizing that F_CPU is evenly divisible by 100 in all cases.  Thus, we
+// cancel a factor of 100 on both sides, which allows us to use long int.
+#define MICROSECONDS_PER_TIMER0_OVERFLOW (64L * 256L * 10000L / (F_CPU / 100L))
 #endif
 
 // the whole number of milliseconds per timer0 overflow
