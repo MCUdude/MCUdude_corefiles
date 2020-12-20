@@ -44,10 +44,10 @@ The remaining frequencies are sorted by finite drift accuracy:
 *  7.3728 MHz has a drift of 1 in 10000
 *  3.6864 MHz has a drift of 1 in 10000
 *  1.8432 MHz has a drift of 1 in 10000
-* 24 MHz has a drift of 1 in 4000 (250 ppm)
-* 18 MHz has a drift of 1 in 4000
-* 12 MHz has a drift of 1 in 4000
-* 22.1184 MHz has a drift of 1 in 2850 (350ppm)
-* 11.0592 MHz has a drift of 1 in 2850
+* 24 MHz has a drift of 1 in 4096 (244 ppm)
+* 18 MHz has a drift of 1 in 4096
+* 12 MHz has a drift of 1 in 4096
+* 22.1184 MHz has a drift of 1 in 2857 (350ppm)
+* 11.0592 MHz has a drift of 1 in 2857
 
 The `delay()` function uses `micros()` internally and inherits its accuracy.
