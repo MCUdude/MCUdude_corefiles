@@ -44,6 +44,7 @@
 // For 20MHz this would be 0 (because of 819)
 // For 16MHz this would be 1 (because of 1024)
 #define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
+#define MILLIS_INC_PLUS1 (MILLIS_INC + 1)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
@@ -121,6 +122,7 @@ static unsigned char correct_exact = 0;
 #define CORRECT_LO
 #define CORRECT_ROLL 9
 #endif
+#define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
 #endif
 
 // timer0 interrupt routine ,- is called every time timer0 overflows
@@ -135,22 +137,24 @@ ISR(TIMER0_OVF_vect)
   unsigned long m = timer0_millis;
   unsigned char f = timer0_fract;
 
-  m += MILLIS_INC;
   f += FRACT_INC;
 
 #ifdef CORRECT_EXACT
   // correct millis () to be exact for certain clocks
-  if (++correct_exact == CORRECT_ROLL) {
+  if (correct_exact == CORRECT_ROLL_MINUS1) {
     correct_exact = 0;
 #ifdef CORRECT_LO
     ++f;
 #endif
   }
-#ifdef CORRECT_HI
   else {
+    ++correct_exact;
+#ifdef CORRECT_HI
     ++f;
-  }
 #endif
+  }
+  // it does not matter for the long-time drift whether the following two
+  // corrections take place before or after the increment of correct_exact
 #ifdef CORRECT_ODD
   if (correct_exact & 1) {
     ++f;
@@ -165,7 +169,10 @@ ISR(TIMER0_OVF_vect)
 
   if (f >= FRACT_MAX) {
     f -= FRACT_MAX;
-    m += 1;
+    m += MILLIS_INC_PLUS1;
+  }
+  else {
+    m += MILLIS_INC;
   }
 
   timer0_fract = f;
