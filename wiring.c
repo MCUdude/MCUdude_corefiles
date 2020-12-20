@@ -56,9 +56,8 @@
 // Shift right by 3 to fit in a byte (results in 125)
 #define FRACT_MAX (1000 >> 3)
 
-volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
-static unsigned char timer0_fract = 0;
+volatile unsigned char timer0_fract = 0;
 
 // Add a correction calculation to make millis () exact for certain clocks.
 // The idea is to compare the exact microseconds/8 between overflows,
@@ -127,6 +126,14 @@ static unsigned char correct_exact = 0;
 #define CORRECT_ROLL 9
 #endif
 #define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
+#endif // CORRECT_EXACT
+
+// The new micros() formula is always activated because it speeds up the ISR.
+// The overflow count variable is eliminated, which saves memory and cycles.
+#define CORRECT_EXACT_MICROS
+#ifndef CORRECT_EXACT_MICROS
+// variable is needed in micros() calculation without exactness correction
+volatile unsigned long timer0_overflow_count = 0;
 #endif
 
 // timer0 interrupt routine ,- is called every time timer0 overflows
@@ -181,7 +188,9 @@ ISR(TIMER0_OVF_vect)
 
   timer0_fract = f;
   timer0_millis = m;
+#ifndef CORRECT_EXACT_MICROS
   timer0_overflow_count++;
+#endif
 }
 
 unsigned long millis()
@@ -200,13 +209,26 @@ unsigned long millis()
 
 unsigned long micros() {
   unsigned long m;
-  uint8_t oldSREG = SREG;
+#ifdef CORRECT_EXACT_MICROS
+  // will use such amount of bits in calculations below
+  unsigned long t;
+  unsigned char f;
+#else
   // t will be the number where the timer0 counter stopped
   uint8_t t;
+#endif
+  uint8_t oldSREG = SREG;
 
   // Stop all interrupts
   cli();
+
+#ifdef CORRECT_EXACT_MICROS
+  // combine exact millisec and 8usec counters
+  m = timer0_millis;
+  f = timer0_fract;
+#else
   m = timer0_overflow_count;
+#endif
 
   // TCNT0 : The Timer Counter Register
 #if defined(TCNT0)
@@ -220,14 +242,31 @@ unsigned long micros() {
   // Timer0 Interrupt Flag Register
 #ifdef TIFR0
   if ((TIFR0 & _BV(TOV0)) && (t < 255))
+#ifdef CORRECT_EXACT_MICROS
+    t |= (1 << 8);      //< we add 256 for t rolling over once more
+#else
     m++;
+#endif
 #else
   if ((TIFR & _BV(TOV0)) && (t < 255))
+#ifdef CORRECT_EXACT_MICROS
+    t |= (1 << 8);
+#else
     m++;
+#endif
 #endif
   // Restore SREG
   SREG = oldSREG;
 
+#ifdef CORRECT_EXACT_MICROS
+  // we rely on exact millis and fraction in 8us steps, plus scaled timer value
+  // m * 1000 + (f << 3)
+  // = m * 125 * 8 + (f << 3)
+  // = ((m * (128 - 2 - 1)) << 3) + (f << 3)
+  // = (m * (128 - 2 - 1) + f) << 3
+  return (((m << 7) - (m << 1) - m + f) << 3) +
+    ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
+#else
 #if F_CPU >= 32000000L
   // we need to put this #if here to avoid entering the wrong branch for 32 MHz
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
@@ -309,6 +348,7 @@ unsigned long micros() {
   // t is multiplied by 4
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #endif
+#endif // !CORRECT_EXACT_MICROS
 }
 
 void delay(unsigned long ms)
