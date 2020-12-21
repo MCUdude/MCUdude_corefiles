@@ -27,12 +27,24 @@
 // 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682 
 // 20MHz: An overflow happens every 819.2 microseconds ---> 0,05 (time of a cycle in micros) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
 // 16MHz: An overflow happens every 1024 microseconds
+#if 0
+// this would be inaccurate for non-power-of-two frequencies
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
+#else
+// It is vital to avoid unnecessary roundoff in this calculation.
+// What we really want to compute is the number of microseconds in one
+// timer cycle, thus 64 * 256 * 1e6 / F_CPU.  When calculating with integers,
+// the product 64 * 256 * 1000**2 overflows an unsigned long.  We resolve this
+// by recognizing that F_CPU is evenly divisible by 100 in all cases.  Thus, we
+// cancel a factor of 100 on both sides, which allows us to use long int.
+#define MICROSECONDS_PER_TIMER0_OVERFLOW (64L * 256L * 10000L / (F_CPU / 100L))
+#endif
 
 // the whole number of milliseconds per timer0 overflow
 // For 20MHz this would be 0 (because of 819)
 // For 16MHz this would be 1 (because of 1024)
 #define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
+#define MILLIS_INC_PLUS1 (MILLIS_INC + 1)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
@@ -48,6 +60,71 @@ volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
 static unsigned char timer0_fract = 0;
 
+// Add a correction calculation to make millis () exact for certain clocks.
+// The idea is to compare the exact microseconds/8 between overflows,
+// namely (1. / F_CPU * 64. * 256. * 1e6) % 1000 / 8.,
+// with the integer rounded down version in FRACT_INC.
+// For the clock speeds examined below, we encounter four different cases.
+// The low case: FRACT_INC is too low by a fraction 1 / n.
+//               Correct by adding 1 to the fract counter every n times.
+// The high case: FRACT_INC is too low by a fraction (n - 1) / n.
+//               Add 1 to the fract counter always except every n times.
+// A special case for 20 MHz: FRACT_INC is too low by the fraction 2. / 5.
+//               Correct by adding 2 out of 5 times: every odd number in 0..4.
+// A special case for 11.0592 MHz: FRACT_INC is too low by 5. / 27.
+//               Correct brute force by counting 5 out of 27.
+//               Do it the same way for the remaining odd cases.
+// This way we correct losses from both the rounding to usecs and the shift.
+#if F_CPU == 24000000L || \
+    F_CPU == 22118400L || \
+    F_CPU == 20000000L || \
+    F_CPU == 18432000L || \
+    F_CPU == 18000000L || \
+    F_CPU == 14745600L || \
+    F_CPU == 12000000L || \
+    F_CPU == 11059200L || \
+    F_CPU ==  7372800L || \
+    F_CPU ==  3686400L || \
+    F_CPU ==  1843200L
+#define CORRECT_EXACT
+static unsigned char correct_exact = 0;
+#if F_CPU == 24000000L          // for 24 MHz we get 85.33, off by 1./3.
+#define CORRECT_LO
+#define CORRECT_ROLL 3
+#elif F_CPU == 22118400L        // for 22.1184 MHz we get 92 + 16./27.
+#define CORRECT_BRUTE 16
+#define CORRECT_ROLL 27
+#elif F_CPU == 20000000L        // for 20 MHz we get 102.4, off by 2./5.
+#define CORRECT_ODD
+#define CORRECT_ROLL 5
+#elif F_CPU == 18432000L        // for 18.432 MHz we get 111.11, off by 1./9.
+#define CORRECT_LO
+#define CORRECT_ROLL 9
+#elif F_CPU == 18000000L        // for 18 MHz we get 113.78, off by 7./9.
+#define CORRECT_BRUTE 7
+#define CORRECT_ROLL 9
+#elif F_CPU == 14745600L        // for 14.7456 MHz we get 13.89, off by 8./9.
+#define CORRECT_HI
+#define CORRECT_ROLL 9
+#elif F_CPU == 12000000L        // for 12 MHz we get 45.67, off by 2./3.
+#define CORRECT_HI
+#define CORRECT_ROLL 3
+#elif F_CPU == 11059200L        // for 11.0592 MHz we get 60 + 5./27.
+#define CORRECT_BRUTE 5
+#define CORRECT_ROLL 27
+#elif F_CPU == 7372800L         // for 7.372800 MHz we get 27 + 7./9.
+#define CORRECT_BRUTE 7
+#define CORRECT_ROLL 9
+#elif F_CPU == 3686400L         // for 3.686400 MHz we get 55 + 5./9.
+#define CORRECT_BRUTE 5
+#define CORRECT_ROLL 9
+#elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
+#define CORRECT_LO
+#define CORRECT_ROLL 9
+#endif
+#define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
+#endif
+
 // timer0 interrupt routine ,- is called every time timer0 overflows
 #if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
 ISR(TIM0_OVF_vect)
@@ -60,11 +137,42 @@ ISR(TIMER0_OVF_vect)
   unsigned long m = timer0_millis;
   unsigned char f = timer0_fract;
 
-  m += MILLIS_INC;
   f += FRACT_INC;
+
+#ifdef CORRECT_EXACT
+  // correct millis () to be exact for certain clocks
+  if (correct_exact == CORRECT_ROLL_MINUS1) {
+    correct_exact = 0;
+#ifdef CORRECT_LO
+    ++f;
+#endif
+  }
+  else {
+    ++correct_exact;
+#ifdef CORRECT_HI
+    ++f;
+#endif
+  }
+  // it does not matter for the long-time drift whether the following two
+  // corrections take place before or after the increment of correct_exact
+#ifdef CORRECT_ODD
+  if (correct_exact & 1) {
+    ++f;
+  }
+#endif
+#ifdef CORRECT_BRUTE
+  if (correct_exact < CORRECT_BRUTE) {
+    ++f;
+  }
+#endif
+#endif // CORRECT_EXACT
+
   if (f >= FRACT_MAX) {
     f -= FRACT_MAX;
-    m += 1;
+    m += MILLIS_INC_PLUS1;
+  }
+  else {
+    m += MILLIS_INC;
   }
 
   timer0_fract = f;
@@ -116,51 +224,73 @@ unsigned long micros() {
   // Restore SREG
   SREG = oldSREG;
 
-#if F_CPU >= 24000000L && F_CPU < 32000000L
+#if F_CPU >= 32000000L
+  // we need to put this #if here to avoid entering the wrong branch for 32 MHz
+  return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+#elif F_CPU >= 24000000L
   // m needs to be multiplied by 682.67
-  // and t by 2.67
+  // and t by 2.667 ~ 1365 / 512. for an error of 1 in 4000
   m = (m << 8) + t;
-  return (m << 1) + (m >> 1) + (m >> 3) + (m >> 4); // Multiply by 2.6875
+  m = (m << 1) + (m >> 1) + (m >> 3);
+  return m + (m >> 6);
+#elif F_CPU >= 22118400L
+  // m needs to be multiplied by 740.74
+  // and t by 2.894 ~ 741 / 256. for an error of 1 in 2850
+  m = (m << 8) + t;
+  return m + (m << 1) - (m >> 3) + (m >> 6) + (m >> 8);
 #elif F_CPU >= 20000000L
-  // m needs to be multiplied by 819.2 
-  // t needs to be multiplied by 3.2
+  // m needs to be multiplied by 819.2
+  // and t by 16. / 5. = 3.2 ~ 819 / 256. for an error of 1 in 4000
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 2) - (m >> 4); // Multiply by 3.1875
+  m = (m << 2) - m;
+  // return m + (m >> 4) + (m >> 8);
+  // improve further to 3.19995 ~ 13107 / 4096. for an error of 15 ppm
+  m += (m >> 4);
+  return m + (m >> 8);
 #elif F_CPU >= 18432000L
-  // m needs to be multiplied by 888.88
-  // and t by 3.47
+  // m needs to be multiplied by 888.89
+  // and t by 125. / 36. ~ 3.472 ~ 889. / 256. for an error of 1 in 8000
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 1); // Multiply by 3.5
+  // return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8);
+  // improve further to 3.47217 ~ 7111. / 2048. for an error of 16 ppm
+  return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8) - (m >> 11);
+#elif F_CPU >= 18000000L
+  // m needs to be multiplied by 910.22
+  // and t by 3.556 ~ 910. / 256. for an error of 1 in 4000
+  m = (m << 8) + t;
+  m = (m << 2) - (m >> 1);
+  return m + (m >> 6);
 #elif F_CPU >= 14745600L && F_CPU != 16000000L
-  // m needs to be multiplied by 1111.1
-  // and t by 4.34
+  // m needs to be multiplied by 1111.11
+  // and t by 4.34 ~ 1111. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 2) + (m >> 1) - (m >> 3) - (m >> 4); // Multiply by 4.3125
+  return (m << 2) + (m >> 1) - (m >> 3) - (m >> 5) - (m >> 8);
 #elif F_CPU >= 12000000L && F_CPU != 16000000L
   // m needs to be multiplied by 1365.33
-  // and t by 5.33
+  // and t by 5.33 ~ 1365. / 256. for an error of 1 in 4000
   m = (m << 8) + t;
-  return m + (m << 2) + (m >> 2) + (m >> 3) - (m >> 4) + (m >> 5); // Multiply by 5.3437
+  m += (m << 2) + (m >> 2);
+  return m + (m >> 6);
 #elif F_CPU >= 11059200L && F_CPU != 16000000L
   // m needs to be multiplied by 1481.48
-  // and t by 5.78
+  // and t by 5.789 ~ 1482. / 256. for an error of 1 in 2850
   m = (m << 8) + t;
-  return (m << 2) + (m << 1) - (m >> 2) + (m >> 5); // Multiply by 5.78125
+  return (m << 3) - (m << 1) - (m >> 2) + (m >> 5) + (m >> 7);
 #elif F_CPU == 7372800L
   // m needs to be multiplied by 2222.22
-  // and t by 8.68
+  // and t by 8.68 ~ 2222. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 3) + m - (m >> 2) - (m >> 3); // Multiply by 8.625
+  return (m << 3) + m - (m >> 2) - (m >> 4) - (m >> 7);
 #elif F_CPU == 3686400L
   // m needs to be multiplied by 4444.44
-  // and t by 17.36
+  // and t by 17.36 ~ 4444. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 4) + m + (m >> 1) - (m >> 3) - (m >> 6); // Multiply by 17.359375
+  return (m << 4) + (m << 1) - (m >> 1) - (m >> 3) - (m >> 6);
 #elif F_CPU == 1843200L
   // m needs to be multiplied by 8888.88
-  // and t by 34.72
+  // and t by 34.72 ~ 8888. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 5) + (m << 1) + (m >> 1) + (m >> 2); // Multiply by 34.75
+  return (m << 5) + (m << 2) - m - (m >> 2) - (m >> 5);
 #else
   // 32 MHz, 24 MHz, 16 MHz, 8 MHz, 4 MHz, 1 MHz
   // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
@@ -172,13 +302,13 @@ unsigned long micros() {
 
 void delay(unsigned long ms)
 {
-  uint32_t start = micros();
+  unsigned long start = micros();
 
-  while (ms > 0) {
+  while (ms > 0UL) {
     yield();
-    while ( ms > 0 && (micros() - start) >= 1000) {
+    while (ms > 0UL && (micros() - start) >= 1000UL) {
       ms--;
-      start += 1000;
+      start += 1000UL;
     }
   }
 }
