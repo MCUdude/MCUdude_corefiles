@@ -27,12 +27,24 @@
 // 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682 
 // 20MHz: An overflow happens every 819.2 microseconds ---> 0,05 (time of a cycle in micros) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
 // 16MHz: An overflow happens every 1024 microseconds
+#if 0
+// this would be inaccurate for non-power-of-two frequencies
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
+#else
+// It is vital to avoid unnecessary roundoff in this calculation.
+// What we really want to compute is the number of microseconds in one
+// timer cycle, thus 64 * 256 * 1e6 / F_CPU.  When calculating with integers,
+// the product 64 * 256 * 1000**2 overflows an unsigned long.  We resolve this
+// by recognizing that F_CPU is evenly divisible by 100 in all cases.  Thus, we
+// cancel a factor of 100 on both sides, which allows us to use long int.
+#define MICROSECONDS_PER_TIMER0_OVERFLOW (64L * 256L * 10000L / (F_CPU / 100L))
+#endif
 
 // the whole number of milliseconds per timer0 overflow
 // For 20MHz this would be 0 (because of 819)
 // For 16MHz this would be 1 (because of 1024)
 #define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
+#define MILLIS_INC_PLUS1 (MILLIS_INC + 1)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
@@ -48,6 +60,71 @@ volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
 static unsigned char timer0_fract = 0;
 
+// Add a correction calculation to make millis () exact for certain clocks.
+// The idea is to compare the exact microseconds/8 between overflows,
+// namely (1. / F_CPU * 64. * 256. * 1e6) % 1000 / 8.,
+// with the integer rounded down version in FRACT_INC.
+// For the clock speeds examined below, we encounter four different cases.
+// The low case: FRACT_INC is too low by a fraction 1 / n.
+//               Correct by adding 1 to the fract counter every n times.
+// The high case: FRACT_INC is too low by a fraction (n - 1) / n.
+//               Add 1 to the fract counter always except every n times.
+// A special case for 20 MHz: FRACT_INC is too low by the fraction 2. / 5.
+//               Correct by adding 2 out of 5 times: every odd number in 0..4.
+// A special case for 11.0592 MHz: FRACT_INC is too low by 5. / 27.
+//               Correct brute force by counting 5 out of 27.
+//               Do it the same way for the remaining odd cases.
+// This way we correct losses from both the rounding to usecs and the shift.
+#if F_CPU == 24000000L || \
+    F_CPU == 22118400L || \
+    F_CPU == 20000000L || \
+    F_CPU == 18432000L || \
+    F_CPU == 18000000L || \
+    F_CPU == 14745600L || \
+    F_CPU == 12000000L || \
+    F_CPU == 11059200L || \
+    F_CPU ==  7372800L || \
+    F_CPU ==  3686400L || \
+    F_CPU ==  1843200L
+#define CORRECT_EXACT
+static unsigned char correct_exact = 0;
+#if F_CPU == 24000000L          // for 24 MHz we get 85.33, off by 1./3.
+#define CORRECT_LO
+#define CORRECT_ROLL 3
+#elif F_CPU == 22118400L        // for 22.1184 MHz we get 92 + 16./27.
+#define CORRECT_BRUTE 16
+#define CORRECT_ROLL 27
+#elif F_CPU == 20000000L        // for 20 MHz we get 102.4, off by 2./5.
+#define CORRECT_ODD
+#define CORRECT_ROLL 5
+#elif F_CPU == 18432000L        // for 18.432 MHz we get 111.11, off by 1./9.
+#define CORRECT_LO
+#define CORRECT_ROLL 9
+#elif F_CPU == 18000000L        // for 18 MHz we get 113.78, off by 7./9.
+#define CORRECT_BRUTE 7
+#define CORRECT_ROLL 9
+#elif F_CPU == 14745600L        // for 14.7456 MHz we get 13.89, off by 8./9.
+#define CORRECT_HI
+#define CORRECT_ROLL 9
+#elif F_CPU == 12000000L        // for 12 MHz we get 45.67, off by 2./3.
+#define CORRECT_HI
+#define CORRECT_ROLL 3
+#elif F_CPU == 11059200L        // for 11.0592 MHz we get 60 + 5./27.
+#define CORRECT_BRUTE 5
+#define CORRECT_ROLL 27
+#elif F_CPU == 7372800L         // for 7.372800 MHz we get 27 + 7./9.
+#define CORRECT_BRUTE 7
+#define CORRECT_ROLL 9
+#elif F_CPU == 3686400L         // for 3.686400 MHz we get 55 + 5./9.
+#define CORRECT_BRUTE 5
+#define CORRECT_ROLL 9
+#elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
+#define CORRECT_LO
+#define CORRECT_ROLL 9
+#endif
+#define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
+#endif
+
 // timer0 interrupt routine ,- is called every time timer0 overflows
 #if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
 ISR(TIM0_OVF_vect)
@@ -60,11 +137,42 @@ ISR(TIMER0_OVF_vect)
   unsigned long m = timer0_millis;
   unsigned char f = timer0_fract;
 
-  m += MILLIS_INC;
   f += FRACT_INC;
+
+#ifdef CORRECT_EXACT
+  // correct millis () to be exact for certain clocks
+  if (correct_exact == CORRECT_ROLL_MINUS1) {
+    correct_exact = 0;
+#ifdef CORRECT_LO
+    ++f;
+#endif
+  }
+  else {
+    ++correct_exact;
+#ifdef CORRECT_HI
+    ++f;
+#endif
+  }
+  // it does not matter for the long-time drift whether the following two
+  // corrections take place before or after the increment of correct_exact
+#ifdef CORRECT_ODD
+  if (correct_exact & 1) {
+    ++f;
+  }
+#endif
+#ifdef CORRECT_BRUTE
+  if (correct_exact < CORRECT_BRUTE) {
+    ++f;
+  }
+#endif
+#endif // CORRECT_EXACT
+
   if (f >= FRACT_MAX) {
     f -= FRACT_MAX;
-    m += 1;
+    m += MILLIS_INC_PLUS1;
+  }
+  else {
+    m += MILLIS_INC;
   }
 
   timer0_fract = f;
