@@ -199,12 +199,8 @@ void delay(unsigned long ms)
 void delayMicroseconds(unsigned int us)
 {
   // Question:
-  // For some freqencies there is subtraction from us, which rolls over for us == 0.
-  // Shall we add `if (us <= 1) return;' to those cases that don't test for it?
-
-  // Question:
   // We multiply `us' by as much as 6 below.  This reduces the available range of us.
-  // Shall we call external delay for values larger than 65535 / 6 to avoid rollover?
+  // Updated README to define the safe calling range to 0 .. 10000 us.
 
   // call = 4 cycles + 1 to 4 cycles to init us(2 for constant delay, 4 for variable,
   //                                            1 for register variable)
@@ -214,6 +210,9 @@ void delayMicroseconds(unsigned int us)
   //delay_us(us);
 
 #if F_CPU >= 32000000L
+  // we catch this case so we don't underrun by subtraction
+  if (us == 0) return;           // 3 cycles (.1us) on false, which we ignore
+
   // the following loop takes a 1/4 of a microsecond (8 cycles with nops)
   // per iteration, so execute it four times for each microsecond of
   // delay requested.
@@ -232,6 +231,9 @@ void delayMicroseconds(unsigned int us)
 // # elif F_CPU >= 29491200L
 
 #elif F_CPU >= 25000000L
+  // we catch this case so we don't underrun by subtraction
+  if (us == 0) return;           // 3 cycles (.1us) on false, which we ignore
+
   // the following loop takes a 1/5 of a microsecond (5 cycles)
   // per iteration, so execute it five times for each microsecond of
   // delay requested.
@@ -247,6 +249,9 @@ void delayMicroseconds(unsigned int us)
 
 #elif F_CPU >= 24000000L
   // for the 24 MHz external clock if someone is working with USB
+
+  // we catch this case so we don't underrun by subtraction
+  if (us == 0) return;           // 3 cycles (.1us) on false, which we ignore
 
   // the following loop takes a 1/6 of a microsecond (4 cycles)
   // per iteration, so execute it six times for each microsecond of
