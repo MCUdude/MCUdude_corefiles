@@ -3,6 +3,7 @@
 
 This repo contains the Arduino corefiles used with [MightyCore](https://github.com/MCUdude/MightyCore), [MegaCore](https://github.com/MCUdude/MegaCore), [MiniCore](https://github.com/MCUdude/MiniCore) and [MajorCore](https://github.com/MCUdude/MightyCore).
 
+
 ## Supported devices
 
 * ATmega640, ATmega1280, ATmega2560
@@ -11,6 +12,7 @@ This repo contains the Arduino corefiles used with [MightyCore](https://github.c
 * ATmega8535, ATmega16, ATmega32, ATmega164A/P, ATmega324A/P/PA/PB, ATmega644/P, ATmega1284/P
 * ATmega8515, ATmega162
 * ATmega8, ATmega48/P/PA/PB, ATmega88/P/PA/PB, ATmega168/P/PA/PB, ATmega328/P/PA/PB
+
 
 ## Supported clock frequencies
 
@@ -35,6 +37,15 @@ micros, delay, delayMicroseconds).
 * 1.8432 MHz
 * 1 MHz
 
+
+### Exactness of `delayMicroseconds()`
+
+The `delayMicroseconds(unsigned int us)` implementation is exact up to a few
+cycles.
+
+The maximum input parameter to work reliably is 10000 for 10 milliseconds.
+
+
 ### Accuracy of `micros()` and `delay()`
 
 The `micros()` function has zero drift for power-of-two clock frequencies.
@@ -55,6 +66,7 @@ The remaining frequencies are sorted by finite drift accuracy:
 
 The `delay()` function uses `micros()` internally and inherits its accuracy.
 
+
 ### Exactness of `millis()`
 
 For the clock speeds listed above, `millis()` is corrected to zero drift.
@@ -72,4 +84,3 @@ and old and new time are no more than 16 seconds apart.
 For clock speeds of 16 MHz and below, the return value of `millis()`
 occasionally jumps up by more than one (notwithstanding zero long-time drift).
 Thus, when relying on consecutive returns, run at 18 MHz or above.
-

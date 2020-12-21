@@ -323,11 +323,15 @@ void delay(unsigned long ms)
  * In Arduino IDE 1.6.11 and newer LTO is enabled by default.  The LTO optimizes the code
  * at link time, making the code (often) significantly smaller without making it "slower"
  * and sometimes destroy acccurate software timings like delayMicroseconds() with lower values.
- * To avoid LTO optimization, the line of delayMicroseconds() definition in arduino.h must be replace to this:
+ * To avoid LTO optimization, the line of delayMicroseconds() definition in arduino.h must be replaced by this:
  * void delayMicroseconds(unsigned int) __attribute__ ((noinline)) ;
  */
 void delayMicroseconds(unsigned int us)
 {
+  // Question:
+  // We multiply `us' by as much as 6 below.  This reduces the available range of us.
+  // Updated README to define the safe calling range to 0 .. 10000 us.
+
   // call = 4 cycles + 1 to 4 cycles to init us(2 for constant delay, 4 for variable,
   //                                            1 for register variable)
 
@@ -336,6 +340,9 @@ void delayMicroseconds(unsigned int us)
   //delay_us(us);
 
 #if F_CPU >= 32000000L
+  // we catch this case so we don't underrun by subtraction
+  if (us == 0) return;           // 3 cycles (.1us) on false, which we ignore
+
   // the following loop takes a 1/4 of a microsecond (8 cycles with nops)
   // per iteration, so execute it four times for each microsecond of
   // delay requested.
@@ -354,8 +361,11 @@ void delayMicroseconds(unsigned int us)
 // # elif F_CPU >= 29491200L
 
 #elif F_CPU >= 25000000L
+  // we catch this case so we don't underrun by subtraction
+  if (us == 0) return;           // 3 cycles (.1us) on false, which we ignore
+
   // the following loop takes a 1/5 of a microsecond (5 cycles)
-  // per iteration, so execute it six times for each microsecond of
+  // per iteration, so execute it five times for each microsecond of
   // delay requested.
   us = (us << 2) + us; // x5 us, = 7 cycles
 
@@ -370,6 +380,9 @@ void delayMicroseconds(unsigned int us)
 #elif F_CPU >= 24000000L
   // for the 24 MHz external clock if someone is working with USB
 
+  // we catch this case so we don't underrun by subtraction
+  if (us == 0) return;           // 3 cycles (.1us) on false, which we ignore
+
   // the following loop takes a 1/6 of a microsecond (4 cycles)
   // per iteration, so execute it six times for each microsecond of
   // delay requested.
@@ -380,7 +393,37 @@ void delayMicroseconds(unsigned int us)
   // us is at least 6 so we can substract 5
   us -= 5; // = 2 cycles
 
-// #elif F_CPU >= 22118400L
+#elif F_CPU >= 22118400L
+  // this is basically the same as for 11.0592, except multiplying by 6, not 3.
+  // the correction factor is the same, but the multiply takes 4 cycles longer.
+
+  // the overhead of the function call is 14 (16) cycles which is ~2/3 us
+  if (us <= 1) return; // = 3 cycles, (4 when true)
+
+  us *= 6; // x6 us, = 9 cycles [{ us = (us<<2)+(us<<1); = 9 cycles too }]
+
+                       // +1 cycle (register save)
+  if (us > 15) // = 3 cycles
+  {
+    // since the loop is not accurately 1/6 of a microsecond we need
+    // to multiply us by 0.9216 (11.0592 / 12 = 22.1184 / 24)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+
+    // account for the time taken in the preceeding commands.
+    // we just burned 57 (59) cycles above, remove 14 (14*4=56),
+    // us is at least 15 so we may subtract 14 alright
+    us -= 14; // = 2 cycles
+  }
+  else
+  {
+    // account for the time taken in the preceeding commands.
+    // we just burned 31 (33) cycles above, remove 8 (8*4=32),
+    // user wants to wait at least 2 us, after multiply us >= 12
+
+             // 1 cycle when if jump here
+    us -= 8; // 2 cycles
+             // 2 cycles to jump back to delay cycle.
+  }
 
 #elif F_CPU >= 20000000L
   __asm__ __volatile__ (
@@ -424,7 +467,7 @@ void delayMicroseconds(unsigned int us)
   {
     // Since the loop is not accurately 1/5 of a microsecond we need
     // to multiply us by 0.9216 (18.432 / 20)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 * 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 * 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 59 (61) cycles above, remove 15, (15*4=60)
@@ -439,6 +482,27 @@ void delayMicroseconds(unsigned int us)
     us -= 9; // 2 cycles
              // 2 cycles to jump back to delay cycle.
   }
+
+#elif F_CPU >= 18000000L
+  // for the 18 MHz clock, if somebody is working with USB
+  // or otherwise relating to 12 or 24 MHz clocks
+
+  // for a 1 microsecond delay, simply return.  the overhead
+  // of the function call takes 14 (16) cycles, which is .8 us
+  if (us <= 1) return; // = 3 cycles, (4 when true)
+
+  // make the loop below last 6 cycles
+#undef  _MORENOP_
+#define _MORENOP_ " nop \n\t  nop \n\t"
+
+  // the following loop takes 1/3 of a microsecond (6 cycles) per iteration,
+  // so execute it three times for each microsecond of delay requested.
+  us = (us << 1) + us; // x3 us, = 5 cycles
+
+  // account for the time taken in the preceeding commands.
+  // we just burned 20 (22) cycles above, remove 3 (3*6=18),
+  // us is at least 6 so we may subtract 3
+  us -= 3; // = 2 cycles
 
 #elif F_CPU >= 16000000L
   // for a one-microsecond delay, simply return.  the overhead
@@ -467,7 +531,7 @@ void delayMicroseconds(unsigned int us)
   {
     // Since the loop is not accurately 1/4 of a microsecond we need
     // to multiply us by 0.9216 (14.7456 / 16)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 53 (57) cycles above, remove 13, (13*4=52)
@@ -507,12 +571,12 @@ void delayMicroseconds(unsigned int us)
   us = (us << 1) + us; // x3 us, = 5 cycles
 
                        // +1 cycle (register save)
-  // user wants to wait longer than 4 us
+  // user wants to wait longer than 2 us
   if (us > 14) // = 3 cycles
   {
     // since the loop is not accurately 1/3 of a microsecond we need
     // to multiply us by 0.9216 (11.0592 / 12)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 53 (55) cycles above, remove 13, (13*4=52)
@@ -521,7 +585,8 @@ void delayMicroseconds(unsigned int us)
   else
   {
     // account for the time taken in the preceeding commands.
-    // we just burned 27 (29) cycles above, remove 7, (7*4=28)
+    // we just burned 27 (29) cycles above, remove 7 (7*4=28),
+    // us is at least 9, so we may subtract without rollunder
 
              // 1 cycle when if jump here
     us -= 7; // 2 cycles
@@ -609,7 +674,7 @@ void delayMicroseconds(unsigned int us)
   {
     // since the loop is not accurately 1/2 of a microsecond we need
     // to multiply us by 0.9216 (7.3728 / 8)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 52 (54) cycles above, remove 13, (13*4=52)
@@ -641,13 +706,15 @@ void delayMicroseconds(unsigned int us)
   // of the function call takes 14 (16) cycles, which is almost 4 us
   if (us <= 6) return; // = 3 cycles, (4 when true)
 
+                       // Question:
+                       // Are we certain that there is a register save?
                        // +1 cycle (register save)
   // user wants to wait longer than 12 us
   if (us > 12) // = 3 cycles
   {
     // since the loop is not accurately 1 microsecond we need
     // to multiply us by 0.9216 ( = 3.6864 / 4)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 47 (49) cycles above, remove 12, (12*4=48)
