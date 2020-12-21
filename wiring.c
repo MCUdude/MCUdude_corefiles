@@ -272,7 +272,7 @@ void delayMicroseconds(unsigned int us)
   {
     // since the loop is not accurately 1/6 of a microsecond we need
     // to multiply us by 0.9216 (11.0592 / 12 = 22.1184 / 24)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 57 (59) cycles above, remove 14 (14*4=56),
@@ -332,7 +332,7 @@ void delayMicroseconds(unsigned int us)
   {
     // Since the loop is not accurately 1/5 of a microsecond we need
     // to multiply us by 0.9216 (18.432 / 20)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 * 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 * 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 59 (61) cycles above, remove 15, (15*4=60)
@@ -396,7 +396,7 @@ void delayMicroseconds(unsigned int us)
   {
     // Since the loop is not accurately 1/4 of a microsecond we need
     // to multiply us by 0.9216 (14.7456 / 16)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 53 (57) cycles above, remove 13, (13*4=52)
@@ -441,7 +441,7 @@ void delayMicroseconds(unsigned int us)
   {
     // since the loop is not accurately 1/3 of a microsecond we need
     // to multiply us by 0.9216 (11.0592 / 12)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 53 (55) cycles above, remove 13, (13*4=52)
@@ -539,7 +539,7 @@ void delayMicroseconds(unsigned int us)
   {
     // since the loop is not accurately 1/2 of a microsecond we need
     // to multiply us by 0.9216 (7.3728 / 8)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 52 (54) cycles above, remove 13, (13*4=52)
@@ -579,7 +579,7 @@ void delayMicroseconds(unsigned int us)
   {
     // since the loop is not accurately 1 microsecond we need
     // to multiply us by 0.9216 ( = 3.6864 / 4)
-    us = (us * 60398L) >> 16;   // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
 
     // account for the time taken in the preceeding commands.
     // we just burned 47 (49) cycles above, remove 12, (12*4=48)
