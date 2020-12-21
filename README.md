@@ -28,3 +28,12 @@ By supported I mean clocks that accurate timing is implemented for (millis, micr
 * 2 MHz
 * 1.8432 MHz
 * 1 MHz
+
+### Exactness of `delayMicroseconds()`
+
+The `delayMicroseconds(unsigned int us)` implementation is exact up to a few
+cycles.
+
+The maximum input parameter to work reliably is 10000 for 10 milliseconds.
+
+For 24 MHz and above, calling it with an argument of 0 is *not* well defined.
