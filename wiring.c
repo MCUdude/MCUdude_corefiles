@@ -224,51 +224,73 @@ unsigned long micros() {
   // Restore SREG
   SREG = oldSREG;
 
-#if F_CPU >= 24000000L && F_CPU < 32000000L
+#if F_CPU >= 32000000L
+  // we need to put this #if here to avoid entering the wrong branch for 32 MHz
+  return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+#elif F_CPU >= 24000000L
   // m needs to be multiplied by 682.67
-  // and t by 2.67
+  // and t by 2.667 ~ 1365 / 512. for an error of 1 in 4000
   m = (m << 8) + t;
-  return (m << 1) + (m >> 1) + (m >> 3) + (m >> 4); // Multiply by 2.6875
+  m = (m << 1) + (m >> 1) + (m >> 3);
+  return m + (m >> 6);
+#elif F_CPU >= 22118400L
+  // m needs to be multiplied by 740.74
+  // and t by 2.894 ~ 741 / 256. for an error of 1 in 2850
+  m = (m << 8) + t;
+  return m + (m << 1) - (m >> 3) + (m >> 6) + (m >> 8);
 #elif F_CPU >= 20000000L
-  // m needs to be multiplied by 819.2 
-  // t needs to be multiplied by 3.2
+  // m needs to be multiplied by 819.2
+  // and t by 16. / 5. = 3.2 ~ 819 / 256. for an error of 1 in 4000
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 2) - (m >> 4); // Multiply by 3.1875
+  m = (m << 2) - m;
+  // return m + (m >> 4) + (m >> 8);
+  // improve further to 3.19995 ~ 13107 / 4096. for an error of 15 ppm
+  m += (m >> 4);
+  return m + (m >> 8);
 #elif F_CPU >= 18432000L
-  // m needs to be multiplied by 888.88
-  // and t by 3.47
+  // m needs to be multiplied by 888.89
+  // and t by 125. / 36. ~ 3.472 ~ 889. / 256. for an error of 1 in 8000
   m = (m << 8) + t;
-  return m + (m << 1) + (m >> 1); // Multiply by 3.5
+  // return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8);
+  // improve further to 3.47217 ~ 7111. / 2048. for an error of 16 ppm
+  return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8) - (m >> 11);
+#elif F_CPU >= 18000000L
+  // m needs to be multiplied by 910.22
+  // and t by 3.556 ~ 910. / 256. for an error of 1 in 4000
+  m = (m << 8) + t;
+  m = (m << 2) - (m >> 1);
+  return m + (m >> 6);
 #elif F_CPU >= 14745600L && F_CPU != 16000000L
-  // m needs to be multiplied by 1111.1
-  // and t by 4.34
+  // m needs to be multiplied by 1111.11
+  // and t by 4.34 ~ 1111. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 2) + (m >> 1) - (m >> 3) - (m >> 4); // Multiply by 4.3125
+  return (m << 2) + (m >> 1) - (m >> 3) - (m >> 5) - (m >> 8);
 #elif F_CPU >= 12000000L && F_CPU != 16000000L
   // m needs to be multiplied by 1365.33
-  // and t by 5.33
+  // and t by 5.33 ~ 1365. / 256. for an error of 1 in 4000
   m = (m << 8) + t;
-  return m + (m << 2) + (m >> 2) + (m >> 3) - (m >> 4) + (m >> 5); // Multiply by 5.3437
+  m += (m << 2) + (m >> 2);
+  return m + (m >> 6);
 #elif F_CPU >= 11059200L && F_CPU != 16000000L
   // m needs to be multiplied by 1481.48
-  // and t by 5.78
+  // and t by 5.789 ~ 1482. / 256. for an error of 1 in 2850
   m = (m << 8) + t;
-  return (m << 2) + (m << 1) - (m >> 2) + (m >> 5); // Multiply by 5.78125
+  return (m << 3) - (m << 1) - (m >> 2) + (m >> 5) + (m >> 7);
 #elif F_CPU == 7372800L
   // m needs to be multiplied by 2222.22
-  // and t by 8.68
+  // and t by 8.68 ~ 2222. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 3) + m - (m >> 2) - (m >> 3); // Multiply by 8.625
+  return (m << 3) + m - (m >> 2) - (m >> 4) - (m >> 7);
 #elif F_CPU == 3686400L
   // m needs to be multiplied by 4444.44
-  // and t by 17.36
+  // and t by 17.36 ~ 4444. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 4) + m + (m >> 1) - (m >> 3) - (m >> 6); // Multiply by 17.359375
+  return (m << 4) + (m << 1) - (m >> 1) - (m >> 3) - (m >> 6);
 #elif F_CPU == 1843200L
   // m needs to be multiplied by 8888.88
-  // and t by 34.72
+  // and t by 34.72 ~ 8888. / 256. for an error of 100 ppm
   m = (m << 8) + t;
-  return (m << 5) + (m << 1) + (m >> 1) + (m >> 2); // Multiply by 34.75
+  return (m << 5) + (m << 2) - m - (m >> 2) - (m >> 5);
 #else
   // 32 MHz, 24 MHz, 16 MHz, 8 MHz, 4 MHz, 1 MHz
   // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
@@ -280,13 +302,13 @@ unsigned long micros() {
 
 void delay(unsigned long ms)
 {
-  uint32_t start = micros();
+  unsigned long start = micros();
 
-  while (ms > 0) {
+  while (ms > 0UL) {
     yield();
-    while ( ms > 0 && (micros() - start) >= 1000) {
+    while (ms > 0UL && (micros() - start) >= 1000UL) {
       ms--;
-      start += 1000;
+      start += 1000UL;
     }
   }
 }
@@ -301,7 +323,7 @@ void delay(unsigned long ms)
  * In Arduino IDE 1.6.11 and newer LTO is enabled by default.  The LTO optimizes the code
  * at link time, making the code (often) significantly smaller without making it "slower"
  * and sometimes destroy acccurate software timings like delayMicroseconds() with lower values.
- * To avoid LTO optimization, the line of delayMicrosecons() definition in arduino.h must be replace to this:
+ * To avoid LTO optimization, the line of delayMicroseconds() definition in arduino.h must be replace to this:
  * void delayMicroseconds(unsigned int) __attribute__ ((noinline)) ;
  */
 void delayMicroseconds(unsigned int us)

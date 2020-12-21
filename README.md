@@ -19,8 +19,10 @@ micros, delay, delayMicroseconds).
 
 * 32 MHz
 * 24 MHz
+* 22.1184 MHz
 * 20 MHz
 * 18.432 MHz
+* 18 MHz
 * 16 MHz
 * 14.7456 MHz
 * 12 MHz
@@ -32,6 +34,26 @@ micros, delay, delayMicroseconds).
 * 2 MHz
 * 1.8432 MHz
 * 1 MHz
+
+### Accuracy of `micros()` and `delay()`
+
+The `micros()` function has zero drift for power-of-two clock frequencies.
+
+The remaining frequencies are sorted by finite drift accuracy:
+
+* 20 MHz has a drift of 1 in 65536 (~15 ppm)
+* 18.432 Mhz has a drift of 1 in 64000 (~16 ppm)
+* 14.7456 MHz has a drift of 1 in 10000 (100 ppm)
+*  7.3728 MHz has a drift of 1 in 10000
+*  3.6864 MHz has a drift of 1 in 10000
+*  1.8432 MHz has a drift of 1 in 10000
+* 24 MHz has a drift of 1 in 4096 (244 ppm)
+* 18 MHz has a drift of 1 in 4096
+* 12 MHz has a drift of 1 in 4096
+* 22.1184 MHz has a drift of 1 in 2857 (350ppm)
+* 11.0592 MHz has a drift of 1 in 2857
+
+The `delay()` function uses `micros()` internally and inherits its accuracy.
 
 ### Exactness of `millis()`
 
@@ -50,3 +72,4 @@ and old and new time are no more than 16 seconds apart.
 For clock speeds of 16 MHz and below, the return value of `millis()`
 occasionally jumps up by more than one (notwithstanding zero long-time drift).
 Thus, when relying on consecutive returns, run at 18 MHz or above.
+
