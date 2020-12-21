@@ -193,11 +193,19 @@ void delay(unsigned long ms)
  * In Arduino IDE 1.6.11 and newer LTO is enabled by default.  The LTO optimizes the code
  * at link time, making the code (often) significantly smaller without making it "slower"
  * and sometimes destroy acccurate software timings like delayMicroseconds() with lower values.
- * To avoid LTO optimization, the line of delayMicrosecons() definition in arduino.h must be replace to this:
+ * To avoid LTO optimization, the line of delayMicroseconds() definition in arduino.h must be replaced by this:
  * void delayMicroseconds(unsigned int) __attribute__ ((noinline)) ;
  */
 void delayMicroseconds(unsigned int us)
 {
+  // Question:
+  // For some freqencies there is subtraction from us, which rolls over for us == 0.
+  // Shall we add `if (us <= 1) return;' to those cases that don't test for it?
+
+  // Question:
+  // We multiply `us' by as much as 6 below.  This reduces the available range of us.
+  // Shall we call external delay for values larger than 65535 / 6 to avoid rollover?
+
   // call = 4 cycles + 1 to 4 cycles to init us(2 for constant delay, 4 for variable,
   //                                            1 for register variable)
 
@@ -225,7 +233,7 @@ void delayMicroseconds(unsigned int us)
 
 #elif F_CPU >= 25000000L
   // the following loop takes a 1/5 of a microsecond (5 cycles)
-  // per iteration, so execute it six times for each microsecond of
+  // per iteration, so execute it five times for each microsecond of
   // delay requested.
   us = (us << 2) + us; // x5 us, = 7 cycles
 
@@ -377,7 +385,7 @@ void delayMicroseconds(unsigned int us)
   us = (us << 1) + us; // x3 us, = 5 cycles
 
                        // +1 cycle (register save)
-  // user wants to wait longer than 4 us
+  // user wants to wait longer than 2 us
   if (us > 14) // = 3 cycles
   {
     // since the loop is not accurately 1/3 of a microsecond we need
@@ -391,7 +399,8 @@ void delayMicroseconds(unsigned int us)
   else
   {
     // account for the time taken in the preceeding commands.
-    // we just burned 27 (29) cycles above, remove 7, (7*4=28)
+    // we just burned 27 (29) cycles above, remove 7 (7*4=28),
+    // us is at least 9, so we may subtract without rollunder
 
              // 1 cycle when if jump here
     us -= 7; // 2 cycles
@@ -511,6 +520,8 @@ void delayMicroseconds(unsigned int us)
   // of the function call takes 14 (16) cycles, which is almost 4 us
   if (us <= 6) return; // = 3 cycles, (4 when true)
 
+                       // Question:
+                       // Are we certain that there is a register save?
                        // +1 cycle (register save)
   // user wants to wait longer than 12 us
   if (us > 12) // = 3 cycles
