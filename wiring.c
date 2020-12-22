@@ -212,7 +212,6 @@ unsigned long micros() {
 #ifdef CORRECT_EXACT_MICROS
   // will use such amount of bits in calculations below
   unsigned long t;
-  unsigned char f;
 #else
   // t will be the number where the timer0 counter stopped
   uint8_t t;
@@ -223,9 +222,8 @@ unsigned long micros() {
   cli();
 
 #ifdef CORRECT_EXACT_MICROS
-  // combine exact millisec and 8usec counters
+  // combine exact millisec and fractional (8usec) counters below
   m = timer0_millis;
-  f = timer0_fract;
 #else
   m = timer0_overflow_count;
 #endif
@@ -243,6 +241,7 @@ unsigned long micros() {
 #ifdef TIFR0
   if ((TIFR0 & _BV(TOV0)) && (t < 255))
 #ifdef CORRECT_EXACT_MICROS
+    // hopefully compiler is smart enough to put a 1-bit into the second byte
     t |= (1 << 8);      //< we add 256 for t rolling over once more
 #else
     m++;
@@ -264,7 +263,7 @@ unsigned long micros() {
   // = m * 125 * 8 + (f << 3)
   // = ((m * (128 - 2 - 1)) << 3) + (f << 3)
   // = (m * (128 - 2 - 1) + f) << 3
-  return (((m << 7) - (m << 1) - m + f) << 3) +
+  return (((m << 7) - (m << 1) - m + timer0_fract) << 3) +
     ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
 #else
 
