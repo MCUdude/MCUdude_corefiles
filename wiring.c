@@ -75,7 +75,8 @@ static unsigned char timer0_fract = 0;
 //               Correct brute force by counting 5 out of 27.
 //               Do it the same way for the remaining odd cases.
 // This way we correct losses from both the rounding to usecs and the shift.
-#if F_CPU == 24000000L || \
+#if F_CPU == 25000000L || \
+    F_CPU == 24000000L || \
     F_CPU == 22118400L || \
     F_CPU == 20000000L || \
     F_CPU == 18432000L || \
@@ -88,7 +89,10 @@ static unsigned char timer0_fract = 0;
     F_CPU ==  1843200L
 #define CORRECT_EXACT
 static unsigned char correct_exact = 0;
-#if F_CPU == 24000000L          // for 24 MHz we get 85.33, off by 1./3.
+#if F_CPU == 25000000L          // for 25 MHz we get 81.92, off by 23./25.
+#define CORRECT_BRUTE 23
+#define CORRECT_ROLL 25
+#elif F_CPU == 24000000L        // for 24 MHz we get 85.33, off by 1./3.
 #define CORRECT_LO
 #define CORRECT_ROLL 3
 #elif F_CPU == 22118400L        // for 22.1184 MHz we get 92 + 16./27.
@@ -227,6 +231,13 @@ unsigned long micros() {
 #if F_CPU >= 32000000L
   // we need to put this #if here to avoid entering the wrong branch for 32 MHz
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+#elif F_CPU >= 25000000L
+  // m needs to be multiplied by 655.36
+  // and t by 2.56 ~ 5243 / 2048. for an error of 1 in 43691 (23 ppm)
+  m = (m << 8) + t;
+  // How many shift adds does it take until long multiply becomes faster?
+  // Can we just return (m * 41943UL) >> 14 and be done to 1ppm accuracy.
+  return (m << 2) - m - (m >> 1) + (m >> 4) - (m >> 9) - (m >> 11);
 #elif F_CPU >= 24000000L
   // m needs to be multiplied by 682.67
   // and t by 2.667 ~ 1365 / 512. for an error of 1 in 4096 (244 ppm)

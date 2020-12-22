@@ -20,6 +20,7 @@ By supported I mean clocks that accurate timing is implemented for (millis,
 micros, delay, delayMicroseconds).
 
 * 32 MHz
+* 25 MHz
 * 24 MHz
 * 22.1184 MHz
 * 20 MHz
@@ -55,6 +56,7 @@ The remaining frequencies are sorted by finite drift accuracy:
 
 * 20 MHz has a drift of 1 in 65536 (~15 ppm)
 * 18.432 Mhz has a drift of 1 in 64000 (~16 ppm)
+* 25 MHz      has a drift of 1 in 43691 (~23 ppm)
 * 14.7456 MHz has a drift of 1 in 10000 (100 ppm)
 *  7.3728 MHz has a drift of 1 in 10000
 *  3.6864 MHz has a drift of 1 in 10000
