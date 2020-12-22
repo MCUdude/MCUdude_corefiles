@@ -24,7 +24,7 @@
 
 // the prescaler is set so that timer0 ticks every 64 clock cycles, and the
 // the overflow handler is called every 256 ticks.
-// 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682 
+// 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682
 // 20MHz: An overflow happens every 819.2 microseconds ---> 0,05 (time of a cycle in micros) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
 // 16MHz: An overflow happens every 1024 microseconds
 #if 0
@@ -51,7 +51,7 @@
 // about - 8 and 16 MHz - this doesn't lose precision.)
 // For 16 MHz: 24 (1024 % 1000) gets shifted right by 3 which results in 3   (precision was lost)
 // For 20 MHz: 819 (819 % 1000) gets shifted right by 3 which results in 102 (precision was lost)
-// For 24 MHz: 682 (682 % 1000) gets shifted right by 3 which results in 
+// For 24 MHz: 682 (682 % 1000) gets shifted right by 3 which results in
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
 // Shift right by 3 to fit in a byte (results in 125)
 #define FRACT_MAX (1000 >> 3)
@@ -267,6 +267,25 @@ unsigned long micros() {
   return (((m << 7) - (m << 1) - m + f) << 3) +
     ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
 #else
+
+/* The code below has the following accuracy
+ * =========================================
+
+ * 20 MHz has a drift of 1 in 65536 (~15 ppm)
+ * 18.432 Mhz has a drift of 1 in 64000 (~16 ppm)
+ * 25 MHz      has a drift of 1 in 43691 (~23 ppm)
+ * 14.7456 MHz has a drift of 1 in 10000 (100 ppm)
+ *  7.3728 MHz has a drift of 1 in 10000
+ *  3.6864 MHz has a drift of 1 in 10000
+ *  1.8432 MHz has a drift of 1 in 10000
+ * 24 MHz has a drift of 1 in 4096 (244 ppm)
+ * 18 MHz has a drift of 1 in 4096
+ * 12 MHz has a drift of 1 in 4096
+ * 22.1184 MHz has a drift of 1 in 2857 (350ppm)
+ * 11.0592 MHz has a drift of 1 in 2857
+
+*/
+
 #if F_CPU >= 32000000L
   // we need to put this #if here to avoid entering the wrong branch for 32 MHz
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
@@ -343,7 +362,7 @@ unsigned long micros() {
   return (m << 5) + (m << 2) - m - (m >> 2) - (m >> 5);
 #else
   // 32 MHz, 24 MHz, 16 MHz, 8 MHz, 4 MHz, 1 MHz
-  // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
+  // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in
   // m & t are multiplied by 4 (since it was already multiplied by 256)
   // t is multiplied by 4
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
@@ -524,7 +543,7 @@ void delayMicroseconds(unsigned int us)
     // we just burned 59 (61) cycles above, remove 15, (15*4=60)
     us -= 15; // = 2 cycles
   }
-  else 
+  else
   {
     // account for the time taken in the preceeding commands.
     // we just burned 33 (35) cycles above, remove 9, (9*4=36)
@@ -947,9 +966,9 @@ void init()
 
 #if defined(TCCR4A) && defined(TCCR4B) && defined(TCCR4D)
   TCCR4B |= _BV(CS42) | _BV(CS41) | _BV(CS40); // Set timer 4 prescale factor to 64
-  TCCR4D |= _BV(WGM40);                        // Put timer 4 in phase- and frequency-correct PWM mode 
+  TCCR4D |= _BV(WGM40);                        // Put timer 4 in phase- and frequency-correct PWM mode
   TCCR4A |= _BV(PWM4A);                        // Enable PWM mode for comparator OCR4A
-  TCCR4C |= _BV(PWM4D);                        // Enable PWM mode for comparator OCR4D 
+  TCCR4C |= _BV(PWM4D);                        // Enable PWM mode for comparator OCR4D
 #elif defined(TCCR4B) && defined(CS41) && defined(WGM40)
   TCCR4B |= _BV(CS41) | _BV(CS40); // Set timer 4 prescale factor to 64
   TCCR4A |= _BV(WGM40);            // Put timer 4 in 8-bit phase correct pwm mode
