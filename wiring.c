@@ -229,18 +229,18 @@ unsigned long micros() {
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #elif F_CPU >= 24000000L
   // m needs to be multiplied by 682.67
-  // and t by 2.667 ~ 1365 / 512. for an error of 1 in 4000
+  // and t by 2.667 ~ 1365 / 512. for an error of 1 in 4096 (244 ppm)
   m = (m << 8) + t;
   m = (m << 1) + (m >> 1) + (m >> 3);
   return m + (m >> 6);
 #elif F_CPU >= 22118400L
   // m needs to be multiplied by 740.74
-  // and t by 2.894 ~ 741 / 256. for an error of 1 in 2850
+  // and t by 2.894 ~ 741 / 256. for an error of 1 in 2857 (350 ppm)
   m = (m << 8) + t;
   return m + (m << 1) - (m >> 3) + (m >> 6) + (m >> 8);
 #elif F_CPU >= 20000000L
   // m needs to be multiplied by 819.2
-  // and t by 16. / 5. = 3.2 ~ 819 / 256. for an error of 1 in 4000
+  // and t by 16. / 5. = 3.2 ~ 819 / 256. for an error of 1 in 4096
   m = (m << 8) + t;
   m = (m << 2) - m;
   // return m + (m >> 4) + (m >> 8);
@@ -256,7 +256,7 @@ unsigned long micros() {
   return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8) - (m >> 11);
 #elif F_CPU >= 18000000L
   // m needs to be multiplied by 910.22
-  // and t by 3.556 ~ 910. / 256. for an error of 1 in 4000
+  // and t by 3.556 ~ 910. / 256. for an error of 1 in 4096
   m = (m << 8) + t;
   m = (m << 2) - (m >> 1);
   return m + (m >> 6);
@@ -267,13 +267,13 @@ unsigned long micros() {
   return (m << 2) + (m >> 1) - (m >> 3) - (m >> 5) - (m >> 8);
 #elif F_CPU >= 12000000L && F_CPU != 16000000L
   // m needs to be multiplied by 1365.33
-  // and t by 5.33 ~ 1365. / 256. for an error of 1 in 4000
+  // and t by 5.33 ~ 1365. / 256. for an error of 1 in 4096
   m = (m << 8) + t;
   m += (m << 2) + (m >> 2);
   return m + (m >> 6);
 #elif F_CPU >= 11059200L && F_CPU != 16000000L
   // m needs to be multiplied by 1481.48
-  // and t by 5.789 ~ 1482. / 256. for an error of 1 in 2850
+  // and t by 5.789 ~ 1482. / 256. for an error of 1 in 2857
   m = (m << 8) + t;
   return (m << 3) - (m << 1) - (m >> 2) + (m >> 5) + (m >> 7);
 #elif F_CPU == 7372800L
@@ -788,13 +788,14 @@ void delayMicroseconds(unsigned int us)
   // us is at least 4, divided by 4 gives us 1 (no zero delay bug)
   us >>= 2; // us div 4, = 4 cycles
 
-
 #endif
 
   // busy wait
   __asm__ __volatile__ (
     "1: sbiw %0,1" "\n\t"            // 2 cycles
-        _MORENOP_                    // 4 cycles if 32 MHz or 1 cycle if 25 MHz
+        _MORENOP_                    // 4 cycles if 32 MHz or
+                                     // 1 cycle  if 25 MHz or
+                                     // 2 cycles if 18 MHz
     "   brne 1b"                     // 2 cycles
     : /* no outputs */
     : "w" (us)

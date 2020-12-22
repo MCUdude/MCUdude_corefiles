@@ -44,6 +44,7 @@ The `delayMicroseconds(unsigned int us)` implementation is exact up to a few
 cycles.
 
 The maximum input parameter to work reliably is 10000 for 10 milliseconds.
+Its result is affected by interrupts occurring, which may prolong the delay.
 
 
 ### Accuracy of `micros()` and `delay()`
@@ -64,7 +65,9 @@ The remaining frequencies are sorted by finite drift accuracy:
 * 22.1184 MHz has a drift of 1 in 2857 (350ppm)
 * 11.0592 MHz has a drift of 1 in 2857
 
-The `delay()` function uses `micros()` internally and inherits its accuracy.
+The `delay()` function uses `micros()` internally and inherits its accuracy,
+with slight variations due to function call overhead and processing.
+It is immune to interrupts and thus long-term accurate.
 
 
 ### Exactness of `millis()`
@@ -72,14 +75,15 @@ The `delay()` function uses `micros()` internally and inherits its accuracy.
 For the clock speeds listed above, `millis()` is corrected to zero drift.
 Even for very long run times, the `millis()` function will precisely follow the
 oscillator used.
+
 We do not register the rollover of the `unsigned long` millis counter that
-occurs every day or two; such would have to be done in the user's program.
-Often this is not necessary:  Expressions like
+occurs every 49.7 days; such would have to be done in the user's program.
+Often this is not necessary:  An expressions like
 
     (int) (millis() - millis_old)
 
-are correct even when rolling over provided `millis_old` is of type `unsigned long`
-and old and new time are no more than 16 seconds apart.
+is correct even when rolling over provided `millis_old` is of type `unsigned long`
+and old and new time are no more than 32 seconds apart.
 
 For clock speeds of 16 MHz and below, the return value of `millis()`
 occasionally jumps up by more than one (notwithstanding zero long-time drift).
