@@ -211,12 +211,11 @@ unsigned long micros() {
   unsigned long m;
 #ifdef CORRECT_EXACT_MICROS
   // will use such amount of bits in calculations below
-  unsigned long t;
+  unsigned long lt;
   unsigned char f;
-#else
+#endif
   // t will be the number where the timer0 counter stopped
   uint8_t t;
-#endif
   uint8_t oldSREG = SREG;
 
   // Stop all interrupts
@@ -242,18 +241,22 @@ unsigned long micros() {
   // Timer0 Interrupt Flag Register
 #ifdef TIFR0
   if ((TIFR0 & _BV(TOV0)) && (t < 255))
-#ifdef CORRECT_EXACT_MICROS
-    // hopefully compiler is smart enough to put a 1-bit into the second byte
-    t |= (1 << 8);      //< we add 256 for t rolling over once more
-#else
+#ifndef CORRECT_EXACT_MICROS
     m++;
+#else
+    // we add 256 for t rolling over once more
+    lt = (1U << 8) + t;
+  else
+    lt = t;
 #endif
 #else
   if ((TIFR & _BV(TOV0)) && (t < 255))
-#ifdef CORRECT_EXACT_MICROS
-    t |= (1 << 8);
-#else
+#ifndef CORRECT_EXACT_MICROS
     m++;
+#else
+    lt = (1U << 8) + t;
+  else
+    lt = t;
 #endif
 #endif
   // Restore SREG
@@ -266,7 +269,7 @@ unsigned long micros() {
   // = ((m * (128 - 2 - 1)) << 3) + (f << 3)
   // = (m * (128 - 2 - 1) + f) << 3
   return (((m << 7) - (m << 1) - m + f) << 3) +
-    ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
+    ((lt * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
 #else
 
 /* The code below has the following accuracy
