@@ -86,8 +86,8 @@ volatile unsigned char timer0_fract = 0;
     F_CPU ==  7372800L || \
     F_CPU ==  3686400L || \
     F_CPU ==  1843200L
-#define CORRECT_EXACT
-static unsigned char correct_exact = 0;
+#define CORRECT_EXACT_MILLIS
+static unsigned char timer0_exact = 0;
 #if F_CPU == 25000000L          // for 25 MHz we get 81.92, off by 23./25.
 #define CORRECT_BRUTE 23
 #define CORRECT_ROLL 25
@@ -126,7 +126,7 @@ static unsigned char correct_exact = 0;
 #define CORRECT_ROLL 9
 #endif
 #define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
-#endif // CORRECT_EXACT
+#endif // CORRECT_EXACT_MILLIS
 
 // The new micros() formula is always activated because it speeds up the ISR.
 // The overflow count variable is eliminated, which saves memory and cycles.
@@ -150,33 +150,33 @@ ISR(TIMER0_OVF_vect)
 
   f += FRACT_INC;
 
-#ifdef CORRECT_EXACT
+#ifdef CORRECT_EXACT_MILLIS
   // correct millis () to be exact for certain clocks
-  if (correct_exact == CORRECT_ROLL_MINUS1) {
-    correct_exact = 0;
+  if (timer0_exact == CORRECT_ROLL_MINUS1) {
+    timer0_exact = 0;
 #ifdef CORRECT_LO
     ++f;
 #endif
   }
   else {
-    ++correct_exact;
+    ++timer0_exact;
 #ifdef CORRECT_HI
     ++f;
 #endif
   }
   // it does not matter for the long-time drift whether the following two
-  // corrections take place before or after the increment of correct_exact
+  // corrections take place before or after the increment of timer0_exact
 #ifdef CORRECT_ODD
-  if (correct_exact & 1) {
+  if (timer0_exact & 1) {
     ++f;
   }
 #endif
 #ifdef CORRECT_BRUTE
-  if (correct_exact < CORRECT_BRUTE) {
+  if (timer0_exact < CORRECT_BRUTE) {
     ++f;
   }
 #endif
-#endif // CORRECT_EXACT
+#endif // CORRECT_EXACT_MILLIS
 
   if (f >= FRACT_MAX) {
     f -= FRACT_MAX;
