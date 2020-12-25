@@ -87,7 +87,6 @@ volatile unsigned char timer0_fract = 0;
     F_CPU ==  3686400L || \
     F_CPU ==  1843200L
 #define CORRECT_EXACT_MILLIS
-static unsigned char timer0_exact = 0;
 #if F_CPU == 25000000L          // for 25 MHz we get 81.92, off by 23./25.
 #define CORRECT_BRUTE 23
 #define CORRECT_ROLL 25
@@ -143,6 +142,11 @@ ISR(TIM0_OVF_vect)
 ISR(TIMER0_OVF_vect)
 #endif
 {
+#ifdef CORRECT_EXACT_MILLIS
+  // this is a variable that retains its value between calls
+  static unsigned char timer0_exact = 0;
+#endif
+
   // copy these to local variables so they can be stored in registers
   // (volatile variables must be read from memory on every access, so this saves time)
   unsigned long m = timer0_millis;
