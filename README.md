@@ -70,7 +70,7 @@ oscillator used.
 
 We do not register the rollover of the `unsigned long` millis counter that
 occurs every 49.7 days; such would have to be done in the user's program.
-Often this is not necessary:  An expressions like
+Often this is not necessary:  The expression
 
     (int) (millis() - millis_old)
 
