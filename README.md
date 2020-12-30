@@ -20,6 +20,7 @@ By supported I mean clocks that accurate timing is implemented for (millis,
 micros, delay, delayMicroseconds).
 
 * 32 MHz
+* 25 MHz
 * 24 MHz
 * 22.1184 MHz
 * 20 MHz
@@ -44,27 +45,21 @@ The `delayMicroseconds(unsigned int us)` implementation is exact up to a few
 cycles.
 
 The maximum input parameter to work reliably is 10000 for 10 milliseconds.
+Its result is affected by interrupts occurring, which may prolong the delay.
 
 
-### Accuracy of `micros()` and `delay()`
+### Exactness of `micros()` and `delay()`
 
-The `micros()` function has zero drift for power-of-two clock frequencies.
+For the clock speeds listed above, `micros()` is corrected to zero drift.
+Even for very long run times, the `micros()` function will precisely follow the
+oscillator used.
 
-The remaining frequencies are sorted by finite drift accuracy:
+Note that the result may jump up by several microseconds between consecutive
+calls and rolls over after one hour and eleven minutes.
 
-* 20 MHz has a drift of 1 in 65536 (~15 ppm)
-* 18.432 Mhz has a drift of 1 in 64000 (~16 ppm)
-* 14.7456 MHz has a drift of 1 in 10000 (100 ppm)
-*  7.3728 MHz has a drift of 1 in 10000
-*  3.6864 MHz has a drift of 1 in 10000
-*  1.8432 MHz has a drift of 1 in 10000
-* 24 MHz has a drift of 1 in 4096 (244 ppm)
-* 18 MHz has a drift of 1 in 4096
-* 12 MHz has a drift of 1 in 4096
-* 22.1184 MHz has a drift of 1 in 2857 (350ppm)
-* 11.0592 MHz has a drift of 1 in 2857
-
-The `delay()` function uses `micros()` internally and inherits its accuracy.
+The `delay()` function uses `micros()` internally and inherits its zero drift,
+with slight variations due to function call overhead and processing.
+It is immune to interrupts and thus long-term accurate.
 
 
 ### Exactness of `millis()`
@@ -72,14 +67,15 @@ The `delay()` function uses `micros()` internally and inherits its accuracy.
 For the clock speeds listed above, `millis()` is corrected to zero drift.
 Even for very long run times, the `millis()` function will precisely follow the
 oscillator used.
+
 We do not register the rollover of the `unsigned long` millis counter that
-occurs every day or two; such would have to be done in the user's program.
-Often this is not necessary:  Expressions like
+occurs every 49.7 days; such would have to be done in the user's program.
+Often this is not necessary:  The expression
 
     (int) (millis() - millis_old)
 
-are correct even when rolling over provided `millis_old` is of type `unsigned long`
-and old and new time are no more than 16 seconds apart.
+is correct even when rolling over provided `millis_old` is of type `unsigned long`
+and old and new time are no more than 32 seconds apart.
 
 For clock speeds of 16 MHz and below, the return value of `millis()`
 occasionally jumps up by more than one (notwithstanding zero long-time drift).

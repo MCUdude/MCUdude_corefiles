@@ -24,7 +24,7 @@
 
 // the prescaler is set so that timer0 ticks every 64 clock cycles, and the
 // the overflow handler is called every 256 ticks.
-// 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682 
+// 24MHz: An overflow happens every 682.67 microseconds ---> 0.04167, so this results in 682
 // 20MHz: An overflow happens every 819.2 microseconds ---> 0,05 (time of a cycle in micros) * 64 (timer0 tick) * 256 (every 256 ticks timer0 overflows), so this results in 819
 // 16MHz: An overflow happens every 1024 microseconds
 #if 0
@@ -51,14 +51,13 @@
 // about - 8 and 16 MHz - this doesn't lose precision.)
 // For 16 MHz: 24 (1024 % 1000) gets shifted right by 3 which results in 3   (precision was lost)
 // For 20 MHz: 819 (819 % 1000) gets shifted right by 3 which results in 102 (precision was lost)
-// For 24 MHz: 682 (682 % 1000) gets shifted right by 3 which results in 
+// For 24 MHz: 682 (682 % 1000) gets shifted right by 3 which results in
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
 // Shift right by 3 to fit in a byte (results in 125)
 #define FRACT_MAX (1000 >> 3)
 
-volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
-static unsigned char timer0_fract = 0;
+volatile unsigned char timer0_fract = 0;
 
 // Add a correction calculation to make millis () exact for certain clocks.
 // The idea is to compare the exact microseconds/8 between overflows,
@@ -75,7 +74,8 @@ static unsigned char timer0_fract = 0;
 //               Correct brute force by counting 5 out of 27.
 //               Do it the same way for the remaining odd cases.
 // This way we correct losses from both the rounding to usecs and the shift.
-#if F_CPU == 24000000L || \
+#if F_CPU == 25000000L || \
+    F_CPU == 24000000L || \
     F_CPU == 22118400L || \
     F_CPU == 20000000L || \
     F_CPU == 18432000L || \
@@ -86,9 +86,12 @@ static unsigned char timer0_fract = 0;
     F_CPU ==  7372800L || \
     F_CPU ==  3686400L || \
     F_CPU ==  1843200L
-#define CORRECT_EXACT
-static unsigned char correct_exact = 0;
-#if F_CPU == 24000000L          // for 24 MHz we get 85.33, off by 1./3.
+#define CORRECT_EXACT_MILLIS
+#define CORRECT_EXACT_MICROS
+#if F_CPU == 25000000L          // for 25 MHz we get 81.92, off by 23./25.
+#define CORRECT_BRUTE 23
+#define CORRECT_ROLL 25
+#elif F_CPU == 24000000L        // for 24 MHz we get 85.33, off by 1./3.
 #define CORRECT_LO
 #define CORRECT_ROLL 3
 #elif F_CPU == 22118400L        // for 22.1184 MHz we get 92 + 16./27.
@@ -123,6 +126,11 @@ static unsigned char correct_exact = 0;
 #define CORRECT_ROLL 9
 #endif
 #define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
+#endif // CORRECT_EXACT_MILLIS
+
+#ifndef CORRECT_EXACT_MICROS
+// variable is only needed in micros() calculation without exactness correction
+volatile unsigned long timer0_overflow_count = 0;
 #endif
 
 // timer0 interrupt routine ,- is called every time timer0 overflows
@@ -132,6 +140,11 @@ ISR(TIM0_OVF_vect)
 ISR(TIMER0_OVF_vect)
 #endif
 {
+#ifdef CORRECT_EXACT_MILLIS
+  // this is a variable that retains its value between calls
+  static unsigned char timer0_exact = 0;
+#endif
+
   // copy these to local variables so they can be stored in registers
   // (volatile variables must be read from memory on every access, so this saves time)
   unsigned long m = timer0_millis;
@@ -139,33 +152,33 @@ ISR(TIMER0_OVF_vect)
 
   f += FRACT_INC;
 
-#ifdef CORRECT_EXACT
+#ifdef CORRECT_EXACT_MILLIS
   // correct millis () to be exact for certain clocks
-  if (correct_exact == CORRECT_ROLL_MINUS1) {
-    correct_exact = 0;
+  if (timer0_exact == CORRECT_ROLL_MINUS1) {
+    timer0_exact = 0;
 #ifdef CORRECT_LO
     ++f;
 #endif
   }
   else {
-    ++correct_exact;
+    ++timer0_exact;
 #ifdef CORRECT_HI
     ++f;
 #endif
   }
   // it does not matter for the long-time drift whether the following two
-  // corrections take place before or after the increment of correct_exact
+  // corrections take place before or after the increment of timer0_exact
 #ifdef CORRECT_ODD
-  if (correct_exact & 1) {
+  if (timer0_exact & 1) {
     ++f;
   }
 #endif
 #ifdef CORRECT_BRUTE
-  if (correct_exact < CORRECT_BRUTE) {
+  if (timer0_exact < CORRECT_BRUTE) {
     ++f;
   }
 #endif
-#endif // CORRECT_EXACT
+#endif // CORRECT_EXACT_MILLIS
 
   if (f >= FRACT_MAX) {
     f -= FRACT_MAX;
@@ -177,7 +190,9 @@ ISR(TIMER0_OVF_vect)
 
   timer0_fract = f;
   timer0_millis = m;
+#ifndef CORRECT_EXACT_MICROS
   timer0_overflow_count++;
+#endif
 }
 
 unsigned long millis()
@@ -196,13 +211,25 @@ unsigned long millis()
 
 unsigned long micros() {
   unsigned long m;
-  uint8_t oldSREG = SREG;
+#ifdef CORRECT_EXACT_MICROS
+  // will use such amount of bits in calculations below
+  unsigned long lt;
+  unsigned char f;
+#endif
   // t will be the number where the timer0 counter stopped
   uint8_t t;
+  uint8_t oldSREG = SREG;
 
   // Stop all interrupts
   cli();
+
+#ifdef CORRECT_EXACT_MICROS
+  // combine exact millisec and 8usec counters
+  m = timer0_millis;
+  f = timer0_fract;
+#else
   m = timer0_overflow_count;
+#endif
 
   // TCNT0 : The Timer Counter Register
 #if defined(TCNT0)
@@ -216,31 +243,79 @@ unsigned long micros() {
   // Timer0 Interrupt Flag Register
 #ifdef TIFR0
   if ((TIFR0 & _BV(TOV0)) && (t < 255))
+#ifndef CORRECT_EXACT_MICROS
     m++;
 #else
+    // we add 256 for t rolling over once more
+    lt = (1U << 8) + t;
+  else
+    lt = t;
+#endif
+#else
   if ((TIFR & _BV(TOV0)) && (t < 255))
+#ifndef CORRECT_EXACT_MICROS
     m++;
+#else
+    lt = (1U << 8) + t;
+  else
+    lt = t;
+#endif
 #endif
   // Restore SREG
   SREG = oldSREG;
 
+#ifdef CORRECT_EXACT_MICROS
+  // we rely on exact millis and fraction in 8us steps, plus scaled timer value
+  // m * 1000 + (f << 3)
+  // = m * 125 * 8 + (f << 3)
+  // = ((m * (128 - 2 - 1)) << 3) + (f << 3)
+  // = (m * (128 - 2 - 1) + f) << 3
+  return (((m << 7) - (m << 1) - m + f) << 3) +
+    ((lt * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
+#else
+
+/* The code below has the following accuracy
+ * =========================================
+
+ * 20 MHz has a drift of 1 in 65536 (~15 ppm)
+ * 18.432 Mhz has a drift of 1 in 64000 (~16 ppm)
+ * 25 MHz      has a drift of 1 in 43691 (~23 ppm)
+ * 14.7456 MHz has a drift of 1 in 10000 (100 ppm)
+ *  7.3728 MHz has a drift of 1 in 10000
+ *  3.6864 MHz has a drift of 1 in 10000
+ *  1.8432 MHz has a drift of 1 in 10000
+ * 24 MHz has a drift of 1 in 4096 (244 ppm)
+ * 18 MHz has a drift of 1 in 4096
+ * 12 MHz has a drift of 1 in 4096
+ * 22.1184 MHz has a drift of 1 in 2857 (350ppm)
+ * 11.0592 MHz has a drift of 1 in 2857
+
+*/
+
 #if F_CPU >= 32000000L
   // we need to put this #if here to avoid entering the wrong branch for 32 MHz
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
+#elif F_CPU >= 25000000L
+  // m needs to be multiplied by 655.36
+  // and t by 2.56 ~ 5243 / 2048. for an error of 1 in 43691 (23 ppm)
+  m = (m << 8) + t;
+  // How many shift adds does it take until long multiply becomes faster?
+  // Can we just return (m * 41943UL) >> 14 and be done to 1ppm accuracy.
+  return (m << 2) - m - (m >> 1) + (m >> 4) - (m >> 9) - (m >> 11);
 #elif F_CPU >= 24000000L
   // m needs to be multiplied by 682.67
-  // and t by 2.667 ~ 1365 / 512. for an error of 1 in 4000
+  // and t by 2.667 ~ 1365 / 512. for an error of 1 in 4096 (244 ppm)
   m = (m << 8) + t;
   m = (m << 1) + (m >> 1) + (m >> 3);
   return m + (m >> 6);
 #elif F_CPU >= 22118400L
   // m needs to be multiplied by 740.74
-  // and t by 2.894 ~ 741 / 256. for an error of 1 in 2850
+  // and t by 2.894 ~ 741 / 256. for an error of 1 in 2857 (350 ppm)
   m = (m << 8) + t;
   return m + (m << 1) - (m >> 3) + (m >> 6) + (m >> 8);
 #elif F_CPU >= 20000000L
   // m needs to be multiplied by 819.2
-  // and t by 16. / 5. = 3.2 ~ 819 / 256. for an error of 1 in 4000
+  // and t by 16. / 5. = 3.2 ~ 819 / 256. for an error of 1 in 4096
   m = (m << 8) + t;
   m = (m << 2) - m;
   // return m + (m >> 4) + (m >> 8);
@@ -256,7 +331,7 @@ unsigned long micros() {
   return (m << 2) - (m >> 1) - (m >> 5) + (m >> 8) - (m >> 11);
 #elif F_CPU >= 18000000L
   // m needs to be multiplied by 910.22
-  // and t by 3.556 ~ 910. / 256. for an error of 1 in 4000
+  // and t by 3.556 ~ 910. / 256. for an error of 1 in 4096
   m = (m << 8) + t;
   m = (m << 2) - (m >> 1);
   return m + (m >> 6);
@@ -267,13 +342,13 @@ unsigned long micros() {
   return (m << 2) + (m >> 1) - (m >> 3) - (m >> 5) - (m >> 8);
 #elif F_CPU >= 12000000L && F_CPU != 16000000L
   // m needs to be multiplied by 1365.33
-  // and t by 5.33 ~ 1365. / 256. for an error of 1 in 4000
+  // and t by 5.33 ~ 1365. / 256. for an error of 1 in 4096
   m = (m << 8) + t;
   m += (m << 2) + (m >> 2);
   return m + (m >> 6);
 #elif F_CPU >= 11059200L && F_CPU != 16000000L
   // m needs to be multiplied by 1481.48
-  // and t by 5.789 ~ 1482. / 256. for an error of 1 in 2850
+  // and t by 5.789 ~ 1482. / 256. for an error of 1 in 2857
   m = (m << 8) + t;
   return (m << 3) - (m << 1) - (m >> 2) + (m >> 5) + (m >> 7);
 #elif F_CPU == 7372800L
@@ -293,11 +368,12 @@ unsigned long micros() {
   return (m << 5) + (m << 2) - m - (m >> 2) - (m >> 5);
 #else
   // 32 MHz, 24 MHz, 16 MHz, 8 MHz, 4 MHz, 1 MHz
-  // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in 
+  // Shift by 8 to the left (multiply by 256) so t (which is 1 byte in size) can fit in
   // m & t are multiplied by 4 (since it was already multiplied by 256)
   // t is multiplied by 4
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #endif
+#endif // !CORRECT_EXACT_MICROS
 }
 
 void delay(unsigned long ms)
@@ -473,7 +549,7 @@ void delayMicroseconds(unsigned int us)
     // we just burned 59 (61) cycles above, remove 15, (15*4=60)
     us -= 15; // = 2 cycles
   }
-  else 
+  else
   {
     // account for the time taken in the preceeding commands.
     // we just burned 33 (35) cycles above, remove 9, (9*4=36)
@@ -788,13 +864,14 @@ void delayMicroseconds(unsigned int us)
   // us is at least 4, divided by 4 gives us 1 (no zero delay bug)
   us >>= 2; // us div 4, = 4 cycles
 
-
 #endif
 
   // busy wait
   __asm__ __volatile__ (
     "1: sbiw %0,1" "\n\t"            // 2 cycles
-        _MORENOP_                    // 4 cycles if 32 MHz or 1 cycle if 25 MHz
+        _MORENOP_                    // 4 cycles if 32 MHz or
+                                     // 1 cycle  if 25 MHz or
+                                     // 2 cycles if 18 MHz
     "   brne 1b"                     // 2 cycles
     : /* no outputs */
     : "w" (us)
@@ -895,9 +972,9 @@ void init()
 
 #if defined(TCCR4A) && defined(TCCR4B) && defined(TCCR4D)
   TCCR4B |= _BV(CS42) | _BV(CS41) | _BV(CS40); // Set timer 4 prescale factor to 64
-  TCCR4D |= _BV(WGM40);                        // Put timer 4 in phase- and frequency-correct PWM mode 
+  TCCR4D |= _BV(WGM40);                        // Put timer 4 in phase- and frequency-correct PWM mode
   TCCR4A |= _BV(PWM4A);                        // Enable PWM mode for comparator OCR4A
-  TCCR4C |= _BV(PWM4D);                        // Enable PWM mode for comparator OCR4D 
+  TCCR4C |= _BV(PWM4D);                        // Enable PWM mode for comparator OCR4D
 #elif defined(TCCR4B) && defined(CS41) && defined(WGM40)
   TCCR4B |= _BV(CS41) | _BV(CS40); // Set timer 4 prescale factor to 64
   TCCR4A |= _BV(WGM40);            // Put timer 4 in 8-bit phase correct pwm mode
