@@ -87,6 +87,7 @@ volatile unsigned char timer0_fract = 0;
     F_CPU ==  3686400L || \
     F_CPU ==  1843200L
 #define CORRECT_EXACT_MILLIS
+#define CORRECT_EXACT_MICROS
 #if F_CPU == 25000000L          // for 25 MHz we get 81.92, off by 23./25.
 #define CORRECT_BRUTE 23
 #define CORRECT_ROLL 25
@@ -127,11 +128,8 @@ volatile unsigned char timer0_fract = 0;
 #define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
 #endif // CORRECT_EXACT_MILLIS
 
-// The new micros() formula is always activated because it speeds up the ISR.
-// The overflow count variable is eliminated, which saves memory and cycles.
-#define CORRECT_EXACT_MICROS
 #ifndef CORRECT_EXACT_MICROS
-// variable is needed in micros() calculation without exactness correction
+// variable is only needed in micros() calculation without exactness correction
 volatile unsigned long timer0_overflow_count = 0;
 #endif
 
