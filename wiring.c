@@ -131,30 +131,7 @@ volatile unsigned char timer0_fract = 0;
 #ifndef CORRECT_EXACT_MICROS
 // variable is only needed in micros() calculation without exactness correction
 volatile unsigned long timer0_overflow_count = 0;
-#else
-// additional macros to use faster unsigned int multiply
-#if MICROSECONDS_PER_TIMER0_OVERFLOW >= (1UL << 16)
-// period too large, not defining CORRECT_BITS
-#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 15)
-#define CORRECT_BITS 8 
-#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 14)
-#define CORRECT_BITS 7
-#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 13)
-#define CORRECT_BITS 6
-#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 12)
-#define CORRECT_BITS 5
-#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 11)
-#define CORRECT_BITS 4
-#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 10)
-#define CORRECT_BITS 3
-#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 9)
-#define CORRECT_BITS 2
-#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 8)
-#define CORRECT_BITS 1
-#else
-#define CORRECT_BITS 0
 #endif
-#endif // CORRECT_EXACT_MICROS
 
 // timer0 interrupt routine ,- is called every time timer0 overflows
 #if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
@@ -289,14 +266,8 @@ unsigned long micros() {
      The leading part by m and f is long-term accurate.
      For the timer we just need to be close from below.
      Must never be too high, or micros jumps backwards. */
-  m = (((m << 7) - (m << 1) - m + f) << 3) + ((
-  #ifdef CORRECT_BITS
-      t * (unsigned int) (MICROSECONDS_PER_TIMER0_OVERFLOW >> CORRECT_BITS)
-  #else
-      #define CORRECT_BITS 0
-      t * (unsigned long) MICROSECONDS_PER_TIMER0_OVERFLOW
-  #endif
-    ) >> (8 - CORRECT_BITS));
+  m = (((m << 7) - (m << 1) - m + f) << 3) +
+      ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
   return q ? m + MICROSECONDS_PER_TIMER0_OVERFLOW : m;
 #else
 
