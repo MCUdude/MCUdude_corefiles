@@ -131,7 +131,30 @@ volatile unsigned char timer0_fract = 0;
 #ifndef CORRECT_EXACT_MICROS
 // variable is only needed in micros() calculation without exactness correction
 volatile unsigned long timer0_overflow_count = 0;
+#else
+// additional macros to use faster unsigned int multiply
+#if MICROSECONDS_PER_TIMER0_OVERFLOW >= (1UL << 16)
+// period too large, not defining CORRECT_BITS
+#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 15)
+#define CORRECT_BITS 8 
+#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 14)
+#define CORRECT_BITS 7
+#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 13)
+#define CORRECT_BITS 6
+#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 12)
+#define CORRECT_BITS 5
+#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 11)
+#define CORRECT_BITS 4
+#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 10)
+#define CORRECT_BITS 3
+#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 9)
+#define CORRECT_BITS 2
+#elif MICROSECONDS_PER_TIMER0_OVERFLOW >= (1U << 8)
+#define CORRECT_BITS 1
+#else
+#define CORRECT_BITS 0
 #endif
+#endif // CORRECT_EXACT_MICROS
 
 // timer0 interrupt routine ,- is called every time timer0 overflows
 #if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
@@ -212,9 +235,8 @@ unsigned long millis()
 unsigned long micros() {
   unsigned long m;
 #ifdef CORRECT_EXACT_MICROS
-  // will use such amount of bits in calculations below
-  unsigned long lt;
-  unsigned char f;
+  unsigned char f; // temporary storage for millis fraction counter
+  unsigned char q = 0; // record whether an overflow is flagged
 #endif
   // t will be the number where the timer0 counter stopped
   uint8_t t;
@@ -246,32 +268,36 @@ unsigned long micros() {
 #ifndef CORRECT_EXACT_MICROS
     m++;
 #else
-    // we add 256 for t rolling over once more
-    lt = (1U << 8) + t;
-  else
-    lt = t;
+    q = 1;
 #endif
 #else
   if ((TIFR & _BV(TOV0)) && (t < 255))
 #ifndef CORRECT_EXACT_MICROS
     m++;
 #else
-    lt = (1U << 8) + t;
-  else
-    lt = t;
+    q = 1;
 #endif
 #endif
   // Restore SREG
   SREG = oldSREG;
 
 #ifdef CORRECT_EXACT_MICROS
-  // we rely on exact millis and fraction in 8us steps, plus scaled timer value
-  // m * 1000 + (f << 3)
-  // = m * 125 * 8 + (f << 3)
-  // = ((m * (128 - 2 - 1)) << 3) + (f << 3)
-  // = (m * (128 - 2 - 1) + f) << 3
-  return (((m << 7) - (m << 1) - m + f) << 3) +
-    ((lt * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
+  /* We convert milliseconds, fractional part and timer value
+     into a microsecond value.  Relies on CORRECT_EXACT_MILLIS.
+     Basically we multiply by 1000 and add the scaled timer.
+
+     The leading part by m and f is long-term accurate.
+     For the timer we just need to be close from below.
+     Must never be too high, or micros jumps backwards. */
+  m = (((m << 7) - (m << 1) - m + f) << 3) + ((
+  #ifdef CORRECT_BITS
+      t * (unsigned int) (MICROSECONDS_PER_TIMER0_OVERFLOW >> CORRECT_BITS)
+  #else
+      #define CORRECT_BITS 0
+      t * (unsigned long) MICROSECONDS_PER_TIMER0_OVERFLOW
+  #endif
+    ) >> (8 - CORRECT_BITS));
+  return q ? m + MICROSECONDS_PER_TIMER0_OVERFLOW : m;
 #else
 
 /* The code below has the following accuracy
