@@ -37,14 +37,16 @@
 // the product 64 * 256 * 1000**2 overflows an unsigned long.  We resolve this
 // by recognizing that F_CPU is evenly divisible by 100 in all cases.  Thus, we
 // cancel a factor of 100 on both sides, which allows us to use long int.
-#define MICROSECONDS_PER_TIMER0_OVERFLOW (64L * 256L * 10000L / (F_CPU / 100L))
+// It also turns out that the code runs faster when this number is unsigned!
+#define MICROSECONDS_PER_TIMER0_OVERFLOW \
+  (64UL * 256UL * 10000UL / ((unsigned long) F_CPU / 100UL))
 #endif
 
 // the whole number of milliseconds per timer0 overflow
 // For 20MHz this would be 0 (because of 819)
 // For 16MHz this would be 1 (because of 1024)
-#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
-#define MILLIS_INC_PLUS1 (MILLIS_INC + 1)
+#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000U)
+#define MILLIS_INC_PLUS1 (MILLIS_INC + 1U)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
@@ -52,9 +54,9 @@
 // For 16 MHz: 24 (1024 % 1000) gets shifted right by 3 which results in 3   (precision was lost)
 // For 20 MHz: 819 (819 % 1000) gets shifted right by 3 which results in 102 (precision was lost)
 // For 24 MHz: 682 (682 % 1000) gets shifted right by 3 which results in
-#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
+#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000U) >> 3)
 // Shift right by 3 to fit in a byte (results in 125)
-#define FRACT_MAX (1000 >> 3)
+#define FRACT_MAX (1000U >> 3)
 
 volatile unsigned long timer0_millis = 0;
 volatile unsigned char timer0_fract = 0;
