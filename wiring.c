@@ -37,14 +37,16 @@
 // the product 64 * 256 * 1000**2 overflows an unsigned long.  We resolve this
 // by recognizing that F_CPU is evenly divisible by 100 in all cases.  Thus, we
 // cancel a factor of 100 on both sides, which allows us to use long int.
-#define MICROSECONDS_PER_TIMER0_OVERFLOW (64L * 256L * 10000L / (F_CPU / 100L))
+// It also turns out that the code runs faster when this number is unsigned!
+#define MICROSECONDS_PER_TIMER0_OVERFLOW \
+  (64UL * 256UL * 10000UL / ((unsigned long) F_CPU / 100UL))
 #endif
 
 // the whole number of milliseconds per timer0 overflow
 // For 20MHz this would be 0 (because of 819)
 // For 16MHz this would be 1 (because of 1024)
-#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
-#define MILLIS_INC_PLUS1 (MILLIS_INC + 1)
+#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000U)
+#define MILLIS_INC_PLUS1 (MILLIS_INC + 1U)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
@@ -52,9 +54,9 @@
 // For 16 MHz: 24 (1024 % 1000) gets shifted right by 3 which results in 3   (precision was lost)
 // For 20 MHz: 819 (819 % 1000) gets shifted right by 3 which results in 102 (precision was lost)
 // For 24 MHz: 682 (682 % 1000) gets shifted right by 3 which results in
-#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
+#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000U) >> 3)
 // Shift right by 3 to fit in a byte (results in 125)
-#define FRACT_MAX (1000 >> 3)
+#define FRACT_MAX (1000U >> 3)
 
 volatile unsigned long timer0_millis = 0;
 volatile unsigned char timer0_fract = 0;
@@ -212,9 +214,8 @@ unsigned long millis()
 unsigned long micros() {
   unsigned long m;
 #ifdef CORRECT_EXACT_MICROS
-  // will use such amount of bits in calculations below
-  unsigned long lt;
-  unsigned char f;
+  unsigned char f; // temporary storage for millis fraction counter
+  unsigned char q = 0; // record whether an overflow is flagged
 #endif
   // t will be the number where the timer0 counter stopped
   uint8_t t;
@@ -246,32 +247,30 @@ unsigned long micros() {
 #ifndef CORRECT_EXACT_MICROS
     m++;
 #else
-    // we add 256 for t rolling over once more
-    lt = (1U << 8) + t;
-  else
-    lt = t;
+    q = 1;
 #endif
 #else
   if ((TIFR & _BV(TOV0)) && (t < 255))
 #ifndef CORRECT_EXACT_MICROS
     m++;
 #else
-    lt = (1U << 8) + t;
-  else
-    lt = t;
+    q = 1;
 #endif
 #endif
   // Restore SREG
   SREG = oldSREG;
 
 #ifdef CORRECT_EXACT_MICROS
-  // we rely on exact millis and fraction in 8us steps, plus scaled timer value
-  // m * 1000 + (f << 3)
-  // = m * 125 * 8 + (f << 3)
-  // = ((m * (128 - 2 - 1)) << 3) + (f << 3)
-  // = (m * (128 - 2 - 1) + f) << 3
-  return (((m << 7) - (m << 1) - m + f) << 3) +
-    ((lt * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
+  /* We convert milliseconds, fractional part and timer value
+     into a microsecond value.  Relies on CORRECT_EXACT_MILLIS.
+     Basically we multiply by 1000 and add the scaled timer.
+
+     The leading part by m and f is long-term accurate.
+     For the timer we just need to be close from below.
+     Must never be too high, or micros jumps backwards. */
+  m = (((m << 7) - (m << 1) - m + f) << 3) +
+      ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
+  return q ? m + MICROSECONDS_PER_TIMER0_OVERFLOW : m;
 #else
 
 /* The code below has the following accuracy
