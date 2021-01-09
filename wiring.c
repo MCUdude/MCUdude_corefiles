@@ -478,11 +478,12 @@ void delayMicroseconds(unsigned int us)
   us *= 6; // x6 us, = 9 cycles [{ us = (us<<2)+(us<<1); = 9 cycles too }]
 
                        // +1 cycle (register save)
-  if (us > 15) // = 3 cycles
+  if (us > 16) // = 3 cycles
   {
     // since the loop is not accurately 1/6 of a microsecond we need
     // to multiply us by 0.9216 (11.0592 / 12 = 22.1184 / 24)
     us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    // this drops us to at least 15
 
     // account for the time taken in the preceeding commands.
     // we just burned 57 (59) cycles above, remove 14 (14*4=56),
@@ -538,11 +539,12 @@ void delayMicroseconds(unsigned int us)
 
                        // +1 cycle (register save)
   // user wants to wait longer than 3 us
-  if (us > 15) // = 3 cycles
+  if (us > 17) // = 3 cycles
   {
     // Since the loop is not accurately 1/5 of a microsecond we need
     // to multiply us by 0.9216 (18.432 / 20)
     us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 * 0x10000L)
+    // this drops us to at least 16
 
     // account for the time taken in the preceeding commands.
     // we just burned 59 (61) cycles above, remove 15, (15*4=60)
@@ -607,6 +609,7 @@ void delayMicroseconds(unsigned int us)
     // Since the loop is not accurately 1/4 of a microsecond we need
     // to multiply us by 0.9216 (14.7456 / 16)
     us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    // this drops us to at least 14
 
     // account for the time taken in the preceeding commands.
     // we just burned 53 (57) cycles above, remove 13, (13*4=52)
@@ -646,12 +649,13 @@ void delayMicroseconds(unsigned int us)
   us = (us << 1) + us; // x3 us, = 5 cycles
 
                        // +1 cycle (register save)
-  // user wants to wait longer than 2 us
-  if (us > 14) // = 3 cycles
+  // user wants to wait longer than 5 us
+  if (us > 15) // = 3 cycles
   {
     // since the loop is not accurately 1/3 of a microsecond we need
     // to multiply us by 0.9216 (11.0592 / 12)
     us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    // this drops us to at least 14
 
     // account for the time taken in the preceeding commands.
     // we just burned 53 (55) cycles above, remove 13, (13*4=52)
@@ -698,6 +702,7 @@ void delayMicroseconds(unsigned int us)
     // since the loop is not accurately 2/5 of a microsecond we need
     // to multiply us by 0.9216 (11.0592 / 12)
     us = (us * 30199L) >> 16;   // x(0.9216/2) us = 29 cycles (30199 = 0.4608 x 0x10000L)
+    // this drops us to at least 14
 
     // account for the time taken in the preceeding commands.
     // we just burned 53 (55) cycles above, remove 13, (13*4=52)
@@ -750,6 +755,7 @@ void delayMicroseconds(unsigned int us)
     // since the loop is not accurately 1/2 of a microsecond we need
     // to multiply us by 0.9216 (7.3728 / 8)
     us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    // this drops us to at least 14
 
     // account for the time taken in the preceeding commands.
     // we just burned 52 (54) cycles above, remove 13, (13*4=52)
@@ -784,12 +790,13 @@ void delayMicroseconds(unsigned int us)
                        // Question:
                        // Are we certain that there is a register save?
                        // +1 cycle (register save)
-  // user wants to wait longer than 12 us
-  if (us > 12) // = 3 cycles
+  // user wants to wait longer than 14 us
+  if (us > 14) // = 3 cycles
   {
     // since the loop is not accurately 1 microsecond we need
     // to multiply us by 0.9216 ( = 3.6864 / 4)
     us = (us * 60398UL) >> 16;  // x0.9216 us = 29 cycles (60398 = 0.9216 x 0x10000L)
+    // this drops us to at least 13
 
     // account for the time taken in the preceeding commands.
     // we just burned 47 (49) cycles above, remove 12, (12*4=48)
@@ -823,15 +830,16 @@ void delayMicroseconds(unsigned int us)
 #elif F_CPU >= 1843200L
   // for less than 13 microsecond delay, simply return. the overhead
   // of the function call takes 14 (16) cycles, which is almost 8 us
-  if (us <= 12) return; // = 3 cycles, (4 when true)
+  if (us <= 13) return; // = 3 cycles, (4 when true)
 
                         // no register save here
-  // user wants to wait longer than 25 us
-  if (us > 25) // = 3 cycles
+  // user wants to wait longer than 54 us
+  if (us > 54) // = 3 cycles
   {
     // since the loop takes ~2.17 microseconds we need
     // to multiply us by 0.4608 ( = 1.8432 / 2 / 2 )
     us = (us * 30199L) >> 16;   // x(0.9216/2) us = 29 cycles (30199 = 0.4608 x 0x10000L)
+    // this drops us to at least 25
 
     // account for the time taken in the preceeding commands.
     // we just burned 47 (49) cycles above, remove 24, microseconds
@@ -844,6 +852,7 @@ void delayMicroseconds(unsigned int us)
 
               // 1 cycle when if jump here
     us -= 12; // 2 cycles
+    // this drops us to at least 2 and we divide by 2 below
 
     us >>= 1; // division by 2 = 2 cycles
               // 2 cycles to jump back to delay cycle.
