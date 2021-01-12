@@ -39,7 +39,7 @@
 // cancel a factor of 100 on both sides, which allows us to use long int.
 // It also turns out that the code runs faster when this number is unsigned!
 #define MICROSECONDS_PER_TIMER0_OVERFLOW \
-  (64UL * 256UL * 10000UL / ((unsigned long) F_CPU / 100UL))
+  (64UL * 256UL * 10000UL / (F_CPU / 100UL))
 #endif
 
 // the whole number of milliseconds per timer0 overflow
