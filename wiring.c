@@ -86,6 +86,7 @@ volatile unsigned char timer0_fract = 0;
     F_CPU == 12000000L || \
     F_CPU == 11059200L || \
     F_CPU ==  7372800L || \
+    F_CPU ==  6000000L || \
     F_CPU ==  3686400L || \
     F_CPU ==  1843200L
 #define CORRECT_EXACT_MILLIS
@@ -120,6 +121,9 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 7372800L         // for 7.372800 MHz we get 27 + 7./9.
 #define CORRECT_BRUTE 7
 #define CORRECT_ROLL 9
+#elif F_CPU == 6000000L         // for 6 MHz we get 91 + 1./3.
+#define CORRECT_LO
+#define CORRECT_ROLL 3
 #elif F_CPU == 3686400L         // for 3.686400 MHz we get 55 + 5./9.
 #define CORRECT_BRUTE 5
 #define CORRECT_ROLL 9
@@ -772,6 +776,20 @@ void delayMicroseconds(unsigned int us)
              // 2 cycles to jump back to delay cycle.
   }
 
+#elif F_CPU >= 6000000L
+  // for a 1 to 3 microsecond delay, simply return.  the overhead
+  // of the function call takes 14 (16) cycles, which is 2.5us
+  if (us <= 3) return; //  = 3 cycles, (4 when true)
+
+  // make the loop below last 6 cycles
+#undef  _MORENOP_
+#define _MORENOP_ " nop \n\t  nop \n\t"
+
+  // the following loop takes 1 microsecond (6 cycles) per iteration
+  // we burned 15 (17) cycles above, plus 2 below, remove 3 (3 * 6 = 18)
+  // us is at least 4 so we can subtract 3
+  us -= 3; // = 2 cycles
+
 #elif F_CPU >= 4000000L
   __asm__ __volatile__ ("nop"); // just waiting 1 cycle
   // the overhead of the function call is 15 (17) cycles which is 4 us
@@ -879,7 +897,7 @@ void delayMicroseconds(unsigned int us)
     "1: sbiw %0,1" "\n\t"            // 2 cycles
         _MORENOP_                    // 4 cycles if 32 MHz or
                                      // 1 cycle  if 25 MHz or
-                                     // 2 cycles if 18 MHz
+                                     // 2 cycles if 18, 6 MHz
     "   brne 1b"                     // 2 cycles
     : /* no outputs */
     : "w" (us)
