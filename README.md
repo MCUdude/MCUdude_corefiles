@@ -26,12 +26,14 @@ micros, delay, delayMicroseconds).
 * 20 MHz
 * 18.432 MHz
 * 18 MHz
+* 16.5 MHz
 * 16 MHz
 * 14.7456 MHz
 * 12 MHz
 * 11.0592 MHz
 * 8 MHz
 * 7.3728 MHz
+* 6 MHz
 * 4 MHz
 * 3.6864 MHz
 * 2 MHz
@@ -79,4 +81,4 @@ and old and new time are no more than 32 seconds apart.
 
 For clock speeds of 16 MHz and below, the return value of `millis()`
 occasionally jumps up by more than one (notwithstanding zero long-time drift).
-Thus, when relying on consecutive returns, run at 18 MHz or above.
+Thus, when relying on consecutive returns, run at 16.5 MHz or above.
