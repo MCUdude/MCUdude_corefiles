@@ -86,6 +86,7 @@ volatile unsigned char timer0_fract = 0;
     F_CPU == 14745600L || \
     F_CPU == 12000000L || \
     F_CPU == 11059200L || \
+    F_CPU == 10000000L || \
     F_CPU ==  7372800L || \
     F_CPU ==  6000000L || \
     F_CPU ==  3686400L || \
@@ -122,6 +123,9 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 11059200L        // for 11.0592 MHz we get 60 + 5./27.
 #define CORRECT_BRUTE 5
 #define CORRECT_ROLL 27
+#elif F_CPU == 10000000L        // for 10 MHz we get 79.8, off by 4./5.
+#define CORRECT_HI
+#define CORRECT_ROLL 5
 #elif F_CPU == 7372800L         // for 7.372800 MHz we get 27 + 7./9.
 #define CORRECT_BRUTE 7
 #define CORRECT_ROLL 9
@@ -703,14 +707,14 @@ void delayMicroseconds(unsigned int us)
   if (us <= 2) return; // = 3 cycles, (4 when true)
 
   // the following loop takes 2/5 of a microsecond (4 cycles)
-  // per iteration, so execute it three times for each microsecond of
-  // delay requested.
+  // per iteration, so execute it five times for every 2 microseconds
+  // of delay requested.
   us = (us << 1) + (us >> 1); // x2.5 us, = 7 cycles
 
   // account for the time taken in the preceeding commands.
-  // we just burned 22 (24) cycles above, remove 5, (5*4=20)
-  // us is at least 20 so we can substract 5
-  us -= 5; // = 2 cycles
+  // we burn 22 (24) cycles above plus 2 below, remove 6, (6*4=24)
+  // us is at least 7 so we can subtract 6
+  us -= 6; // = 2 cycles
 
 #elif F_CPU >= 9216000L
   // the overhead of the function call is 14 (16) cycles which is ~1.5 us

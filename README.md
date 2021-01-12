@@ -31,6 +31,7 @@ micros, delay, delayMicroseconds).
 * 14.7456 MHz
 * 12 MHz
 * 11.0592 MHz
+* 10 MHz
 * 8 MHz
 * 7.3728 MHz
 * 6 MHz
