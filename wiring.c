@@ -82,6 +82,7 @@ volatile unsigned char timer0_fract = 0;
     F_CPU == 20000000L || \
     F_CPU == 18432000L || \
     F_CPU == 18000000L || \
+    F_CPU == 16500000L || \
     F_CPU == 14745600L || \
     F_CPU == 12000000L || \
     F_CPU == 11059200L || \
@@ -109,6 +110,9 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 18000000L        // for 18 MHz we get 113.78, off by 7./9.
 #define CORRECT_BRUTE 7
 #define CORRECT_ROLL 9
+#elif F_CPU == 16500000L        // for 16.5 MHz we get 124 + 4./33.
+#define CORRECT_BRUTE 4
+#define CORRECT_ROLL 33
 #elif F_CPU == 14745600L        // for 14.7456 MHz we get 13.89, off by 8./9.
 #define CORRECT_HI
 #define CORRECT_ROLL 9
@@ -584,6 +588,21 @@ void delayMicroseconds(unsigned int us)
   // we just burned 20 (22) cycles above, remove 3 (3*6=18),
   // us is at least 6 so we may subtract 3
   us -= 3; // = 2 cycles
+
+#elif F_CPU >= 16500000L
+  // for a one-microsecond delay, simply return.  the overhead
+  // of the function call takes 14 (16) cycles, which is about 1us
+  if (us <= 1) return; //  = 3 cycles, (4 when true)
+
+  // the following loop takes 1/4 of a microsecond (4 cycles) times 32./33.
+  // per iteration, thus rescale us by 4. * 33. / 32. = 4.125 to compensate
+  us = (us << 2) + (us >> 3); // x4.125 with 22 cycles
+
+  // account for the time taken in the preceding commands.
+  // we burned 37 (39) cycles above, plus 2 below, remove 10 (4*10=40)
+  // us is at least 8, so we subtract only 7 to keep it positive
+  // the error is below one microsecond and not worth extra code
+  us -= 7; // = 2 cycles
 
 #elif F_CPU >= 16000000L
   // for a one-microsecond delay, simply return.  the overhead
