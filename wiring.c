@@ -35,18 +35,17 @@
 // What we really want to compute is the number of microseconds in one
 // timer cycle, thus 64 * 256 * 1e6 / F_CPU.  When calculating with integers,
 // the product 64 * 256 * 1000**2 overflows an unsigned long.  We resolve this
-// by recognizing that F_CPU is evenly divisible by 100 in all cases.  Thus, we
-// cancel a factor of 100 on both sides, which allows us to use long int.
-// It also turns out that the code runs faster when this number is unsigned!
+// by recognizing that F_CPU is evenly divisible by 10 in all cases.  Thus, we
+// cancel a factor of 10 on both sides, which allows us to use unsigned long.
+// It turns out that code runs faster when the number is explicitly unsigned!
 #define MICROSECONDS_PER_TIMER0_OVERFLOW \
-  (64UL * 256UL * 10000UL / (F_CPU / 100UL))
+  (64UL * 256UL * 100000UL / (F_CPU / 10UL))
 #endif
 
 // the whole number of milliseconds per timer0 overflow
 // For 20MHz this would be 0 (because of 819)
 // For 16MHz this would be 1 (because of 1024)
 #define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000U)
-#define MILLIS_INC_PLUS1 (MILLIS_INC + 1U)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
@@ -61,7 +60,7 @@
 volatile unsigned long timer0_millis = 0;
 volatile unsigned char timer0_fract = 0;
 
-// Add a correction calculation to make millis () exact for certain clocks.
+// Add a correction calculation to make millis () exact for most clocks.
 // The idea is to compare the exact microseconds/8 between overflows,
 // namely (1. / F_CPU * 64. * 256. * 1e6) % 1000 / 8.,
 // with the integer rounded down version in FRACT_INC.
@@ -76,21 +75,12 @@ volatile unsigned char timer0_fract = 0;
 //               Correct brute force by counting 5 out of 27.
 //               Do it the same way for the remaining odd cases.
 // This way we correct losses from both the rounding to usecs and the shift.
-#if F_CPU == 25000000L || \
-    F_CPU == 24000000L || \
-    F_CPU == 22118400L || \
-    F_CPU == 20000000L || \
-    F_CPU == 18432000L || \
-    F_CPU == 18000000L || \
-    F_CPU == 16500000L || \
-    F_CPU == 14745600L || \
-    F_CPU == 12000000L || \
-    F_CPU == 11059200L || \
-    F_CPU == 10000000L || \
-    F_CPU ==  7372800L || \
-    F_CPU ==  6000000L || \
-    F_CPU ==  3686400L || \
-    F_CPU ==  1843200L
+// For the remaining non-exact cases, we use a highly accurate approximation.
+#define FRACT_INC_PLUS 0
+#define EXACT_NUM (64UL * 256UL * 125UL * 100UL)
+#define EXACT_DEN (F_CPU / 10UL)
+#define EXACT_REM (EXACT_NUM - (EXACT_NUM / EXACT_DEN) * EXACT_DEN)
+#if EXACT_REM > 0               // correction is needed for exactness
 #define CORRECT_EXACT_MILLIS
 #define CORRECT_EXACT_MICROS
 #if F_CPU == 25000000L          // for 25 MHz we get 81.92, off by 23./25.
@@ -138,9 +128,18 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
 #define CORRECT_LO
 #define CORRECT_ROLL 9
+#else                           // fallback accurate to better than 10ppm
+#define CORRECT_BRUTE (((2U * 135U + 1U) * EXACT_REM) / (2U * EXACT_DEN))
+#define CORRECT_ROLL 135
+#if CORRECT_BRUTE <= 0
+#undef CORRECT_EXACT_MILLIS     // low corner case amounts to nothing
+#elif CORRECT_BRUTE >= CORRECT_ROLL
+#undef CORRECT_EXACT_MILLIS
+#undef FRACT_INC_PLUS
+#define FRACT_INC_PLUS 1        // high corner case always adds one extra
 #endif
-#define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
-#endif // CORRECT_EXACT_MILLIS
+#endif // fallback
+#endif // EXACT_REM > 0
 
 #ifndef CORRECT_EXACT_MICROS
 // variable is only needed in micros() calculation without exactness correction
@@ -164,11 +163,11 @@ ISR(TIMER0_OVF_vect)
   unsigned long m = timer0_millis;
   unsigned char f = timer0_fract;
 
-  f += FRACT_INC;
+  f += FRACT_INC + FRACT_INC_PLUS;
 
 #ifdef CORRECT_EXACT_MILLIS
   // correct millis () to be exact for certain clocks
-  if (timer0_exact == CORRECT_ROLL_MINUS1) {
+  if (timer0_exact == CORRECT_ROLL - 1) {
     timer0_exact = 0;
 #ifdef CORRECT_LO
     ++f;
@@ -196,7 +195,7 @@ ISR(TIMER0_OVF_vect)
 
   if (f >= FRACT_MAX) {
     f -= FRACT_MAX;
-    m += MILLIS_INC_PLUS1;
+    m += MILLIS_INC + 1;
   }
   else {
     m += MILLIS_INC;

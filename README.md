@@ -57,10 +57,14 @@ For the clock speeds listed above, `micros()` is corrected to zero drift.
 Even for very long run times, the `micros()` function will precisely follow the
 oscillator used.
 
-Note that the result may jump up by several microseconds between consecutive
-calls and rolls over after one hour and eleven minutes.
+Frequencies not listed above, for which `5**5 << 16` divided by `F_CPU / 10`
+leaves a nonzero remainder, are corrected to below 10ppm drift and at the same
+rate as `millis()`.
 
-The `delay()` function uses `micros()` internally and inherits its zero drift,
+Note that the result of `micros()` may jump up by several microseconds between
+consecutive calls and rolls over after one hour and eleven minutes.
+
+The `delay()` function uses `micros()` internally and inherits its drift accuracy
 with slight variations due to function call overhead and processing.
 It is immune to interrupts and thus long-term accurate.
 
@@ -70,6 +74,10 @@ It is immune to interrupts and thus long-term accurate.
 For the clock speeds listed above, `millis()` is corrected to zero drift.
 Even for very long run times, the `millis()` function will precisely follow the
 oscillator used.
+
+Frequencies not listed above, for which `5**5 << 16` divided by `F_CPU / 10`
+leaves a nonzero remainder, are corrected to below 10ppm drift and at the same
+rate as `micros()` and `delay()`.
 
 We do not register the rollover of the `unsigned long` millis counter that
 occurs every 49.7 days; such would have to be done in the user's program.
@@ -81,5 +89,5 @@ is correct even when rolling over provided `millis_old` is of type `unsigned lon
 and old and new time are no more than 32 seconds apart.
 
 For clock speeds of 16 MHz and below, the return value of `millis()`
-occasionally jumps up by more than one (notwithstanding zero long-time drift).
+occasionally jumps up by more than one (notwithstanding low/zero drift).
 Thus, when relying on consecutive returns, run at 16.5 MHz or above.
