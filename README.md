@@ -32,6 +32,7 @@ micros, delay, delayMicroseconds).
 * 12 MHz
 * 11.0592 MHz
 * 10 MHz
+* 9.216 MHz
 * 8 MHz
 * 7.3728 MHz
 * 6 MHz
@@ -45,7 +46,7 @@ micros, delay, delayMicroseconds).
 ### Exactness of `delayMicroseconds()`
 
 The `delayMicroseconds(unsigned int us)` implementation is exact up to a few
-cycles.
+cycles for the frequencies listed above.
 
 The maximum input parameter to work reliably is 10000 for 10 milliseconds.
 Its result is affected by interrupts occurring, which may prolong the delay.
@@ -57,9 +58,9 @@ For the clock speeds listed above, `micros()` is corrected to zero drift.
 Even for very long run times, the `micros()` function will precisely follow the
 oscillator used.
 
-Frequencies not listed above, for which `5**5 << 16` divided by `F_CPU / 10`
-leaves a nonzero remainder, are corrected to below 10ppm drift and at the same
-rate as `millis()`.
+Frequencies *not* listed above, for which `5**5 << 16` divided by `F_CPU / 10`
+leaves a *nonzero* remainder, are corrected to below 8 ppm drift
+and in exact sync with `millis()`.
 
 Note that the result of `micros()` may jump up by several microseconds between
 consecutive calls and rolls over after one hour and eleven minutes.
@@ -75,9 +76,9 @@ For the clock speeds listed above, `millis()` is corrected to zero drift.
 Even for very long run times, the `millis()` function will precisely follow the
 oscillator used.
 
-Frequencies not listed above, for which `5**5 << 16` divided by `F_CPU / 10`
-leaves a nonzero remainder, are corrected to below 10ppm drift and at the same
-rate as `micros()` and `delay()`.
+Frequencies *not* listed above, for which `5**5 << 16` divided by `F_CPU / 10`
+leaves a *nonzero* remainder, are corrected to below 8 ppm drift
+and in exact sync with `micros()` and `delay()`.
 
 We do not register the rollover of the `unsigned long` millis counter that
 occurs every 49.7 days; such would have to be done in the user's program.
@@ -90,4 +91,4 @@ and old and new time are no more than 32 seconds apart.
 
 For clock speeds of 16 MHz and below, the return value of `millis()`
 occasionally jumps up by more than one (notwithstanding low/zero drift).
-Thus, when relying on consecutive returns, run at 16.5 MHz or above.
+Thus, when relying on consecutive returns, run at 16.5 MHz or higher.
