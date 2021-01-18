@@ -116,13 +116,16 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 10000000L        // for 10 MHz we get 79.8, off by 4./5.
 #define CORRECT_HI
 #define CORRECT_ROLL 5
-#elif F_CPU == 7372800L         // for 7.372800 MHz we get 27 + 7./9.
+#elif F_CPU == 9216000L         // for 9.216 MHz we get 97. + 2./9.
+#define CORRECT_BRUTE 2
+#define CORRECT_ROLL 9
+#elif F_CPU == 7372800L         // for 7.3728 MHz we get 27 + 7./9.
 #define CORRECT_BRUTE 7
 #define CORRECT_ROLL 9
 #elif F_CPU == 6000000L         // for 6 MHz we get 91 + 1./3.
 #define CORRECT_LO
 #define CORRECT_ROLL 3
-#elif F_CPU == 3686400L         // for 3.686400 MHz we get 55 + 5./9.
+#elif F_CPU == 3686400L         // for 3.6864 MHz we get 55 + 5./9.
 #define CORRECT_BRUTE 5
 #define CORRECT_ROLL 9
 #elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
@@ -717,31 +720,36 @@ void delayMicroseconds(unsigned int us)
 
 #elif F_CPU >= 9216000L
   // the overhead of the function call is 14 (16) cycles which is ~1.5 us
-  if (us <= 3) return; // = 3 cycles, (4 when true)
+  if (us <= 2) return; // = 3 cycles, (4 when true)
 
-  us = (us << 2) + us ; // x2.5x2 us, = 7 cycles
+  // factor of 10 in multiplying by 2 and making the loop last 5 cycles
+  us <<= 1; // x2 us, = 2 cycles
+
+  // make the delay loop last 5 cycles
+#undef  _MORENOP_
+#define _MORENOP_ " nop \n\t"
 
                        // +1 cycle (register save)
-  // user wants to wait longer than 6 us
-  if (us > 30) // = 3 cycles
+  // user wants to wait longer than 5 us
+  if (us > 11) // = 3 cycles
   {
-    // since the loop is not accurately 2/5 of a microsecond we need
+    // since the loop is not accurately 1/2 of a microsecond we need
     // to multiply us by 0.9216 (11.0592 / 12)
-    us = (us * 30199L) >> 16;   // x(0.9216/2) us = 29 cycles (30199 = 0.4608 x 0x10000L)
-    // this drops us to at least 14
+    us = (us * 60398UL) >> 16;   // x(0.9216) us = 29 cycles
+    // this drops us to at least 11
 
     // account for the time taken in the preceeding commands.
-    // we just burned 53 (55) cycles above, remove 13, (13*4=52)
-    us -= 13; // = 2 cycles
+    // we just burned 48 (50) cycles above, remove 10 (10*5=50)
+    us -= 10; // = 2 cycles
   }
   else
   {
     // account for the time taken in the preceeding commands.
-    // we just burned 31 (33) cycles above, remove 8, (8*4=32)
+    // we just burned 26 (28) cycles above, remove 5 (5*5=25)
+    // us is at least 6 so we may subtract 5
 
               // 1 cycle when if jump here
-    us >>= 1; // 2 cycles restore x2.5 us
-    us -=  8; // 2 cycles
+    us -= 5;  // 2 cycles
               // 2 cycles to jump back to delay cycle.
   }
 
@@ -918,7 +926,7 @@ void delayMicroseconds(unsigned int us)
   __asm__ __volatile__ (
     "1: sbiw %0,1" "\n\t"            // 2 cycles
         _MORENOP_                    // 4 cycles if 32 MHz or
-                                     // 1 cycle  if 25 MHz or
+                                     // 1 cycle  if 25, 9.216
                                      // 2 cycles if 18, 6 MHz
     "   brne 1b"                     // 2 cycles
     : /* no outputs */
