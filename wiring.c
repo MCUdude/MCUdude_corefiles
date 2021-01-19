@@ -81,7 +81,7 @@ volatile unsigned char timer0_fract = 0;
 #define EXACT_NUM (64UL * 256UL * 125UL * 100UL)
 #define EXACT_DEN (F_CPU / 10UL)
 #define EXACT_REM (EXACT_NUM - (EXACT_NUM / EXACT_DEN) * EXACT_DEN)
-#if EXACT_REM > 0               // correction is needed for exactness
+#if EXACT_REM > 0 || MICROSECONDS_PER_TIMER0_OVERFLOW % 256 > 0 // correct
 #define CORRECT_EXACT_MILLIS
 #define CORRECT_EXACT_MICROS
 #if F_CPU == 25000000L          // for 25 MHz we get 81.92, off by 23./25.
@@ -286,6 +286,10 @@ unsigned long micros() {
   m = (((m << 7) - (m << 1) - m + f) << 3) +
       ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
   return q ? m + MICROSECONDS_PER_TIMER0_OVERFLOW : m;
+#elif 1
+  /* All power-of-two Megahertz frequencies enter here, as well as 12.8 MHz.
+     We only end up here if right shift before multiplication is exact. */
+  return ((m << 8) + t) * (MICROSECONDS_PER_TIMER0_OVERFLOW >> 8);
 #else
 /*
  * This is the old code requiring individual treatment for each frequency.
@@ -385,7 +389,7 @@ unsigned long micros() {
   // t is multiplied by 4
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #endif
-#endif // !CORRECT_EXACT_MICROS
+#endif // 0
 }
 
 void delay(unsigned long ms)
