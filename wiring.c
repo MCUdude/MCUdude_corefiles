@@ -76,7 +76,8 @@ volatile unsigned char timer0_fract = 0;
 //               Do it the same way for the remaining odd cases.
 // This way we correct losses from both the rounding to usecs and the shift.
 // For the remaining non-exact cases, we use a highly accurate approximation.
-#define FRACT_INC_PLUS 0
+// This happens to be exact, too, for leftover UART-related frequencies.
+#define FRACT_INC_PLUS
 #define EXACT_NUM (64UL * 256UL * 125UL * 100UL)
 #define EXACT_DEN (F_CPU / 10UL)
 #define EXACT_REM (EXACT_NUM - (EXACT_NUM / EXACT_DEN) * EXACT_DEN)
@@ -131,7 +132,7 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
 #define CORRECT_LO
 #define CORRECT_ROLL 9
-#else                           // fallback accurate to better than 10ppm
+#else                           // fallback accurate to better than 8 ppm
 #define CORRECT_BRUTE (((2U * 135U + 1U) * EXACT_REM) / (2U * EXACT_DEN))
 #define CORRECT_ROLL 135
 #if CORRECT_BRUTE <= 0
@@ -139,7 +140,7 @@ volatile unsigned char timer0_fract = 0;
 #elif CORRECT_BRUTE >= CORRECT_ROLL
 #undef CORRECT_EXACT_MILLIS
 #undef FRACT_INC_PLUS
-#define FRACT_INC_PLUS 1        // high corner case always adds one extra
+#define FRACT_INC_PLUS + 1      // high corner case always adds one extra
 #endif
 #endif // fallback
 #endif // EXACT_REM > 0
@@ -166,7 +167,7 @@ ISR(TIMER0_OVF_vect)
   unsigned long m = timer0_millis;
   unsigned char f = timer0_fract;
 
-  f += FRACT_INC + FRACT_INC_PLUS;
+  f += FRACT_INC FRACT_INC_PLUS;
 
 #ifdef CORRECT_EXACT_MILLIS
   // correct millis () to be exact for certain clocks
@@ -286,10 +287,10 @@ unsigned long micros() {
       ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
   return q ? m + MICROSECONDS_PER_TIMER0_OVERFLOW : m;
 #else
-
-/* The code below has the following accuracy
- * =========================================
-
+/*
+ * This is the old code requiring individual treatment for each frequency.
+ * It has the following accuracy for non-power-of-two MHz frequencies.
+ *
  * 20 MHz has a drift of 1 in 65536 (~15 ppm)
  * 18.432 Mhz has a drift of 1 in 64000 (~16 ppm)
  * 25 MHz      has a drift of 1 in 43691 (~23 ppm)
@@ -302,9 +303,7 @@ unsigned long micros() {
  * 12 MHz has a drift of 1 in 4096
  * 22.1184 MHz has a drift of 1 in 2857 (350ppm)
  * 11.0592 MHz has a drift of 1 in 2857
-
 */
-
 #if F_CPU >= 32000000L
   // we need to put this #if here to avoid entering the wrong branch for 32 MHz
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
