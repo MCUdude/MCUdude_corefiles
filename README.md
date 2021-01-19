@@ -43,6 +43,13 @@ micros, delay, delayMicroseconds).
 * 1 MHz
 
 
+### Adding further clock frequencies
+
+The calculation of `millis()`, `micros()` and `delay()` is automatic for
+arbitrary frequencies.  It is either exact or approximate to 8 ppm accuracy.
+The only thing required is adding support in `delayMicroseconds()`.
+
+
 ### Exactness of `delayMicroseconds()`
 
 The `delayMicroseconds(unsigned int us)` implementation is exact up to a few
@@ -58,8 +65,7 @@ For the clock speeds listed above, `micros()` is corrected to zero drift.
 Even for very long run times, the `micros()` function will precisely follow the
 oscillator used.
 
-Frequencies *not* listed above, for which `5**5 << 16` divided by `F_CPU / 10`
-leaves a *nonzero* remainder, are corrected to below 8 ppm drift
+Frequencies not listed above are either exact or corrected to below 8 ppm drift
 and in exact sync with `millis()`.
 
 Note that the result of `micros()` may jump up by several microseconds between
@@ -76,18 +82,20 @@ For the clock speeds listed above, `millis()` is corrected to zero drift.
 Even for very long run times, the `millis()` function will precisely follow the
 oscillator used.
 
-Frequencies *not* listed above, for which `5**5 << 16` divided by `F_CPU / 10`
-leaves a *nonzero* remainder, are corrected to below 8 ppm drift
+Frequencies not listed above are either exact or corrected to below 8 ppm drift
 and in exact sync with `micros()` and `delay()`.
 
 We do not register the rollover of the `unsigned long` millis counter that
 occurs every 49.7 days; such would have to be done in the user's program.
-Often this is not necessary:  The expression
+Often this is not necessary:  The code
 
-    (int) (millis() - millis_old)
+    if (millis() - millis_old >= interval) {
+      /* do something */
+      millis_old += interval;
+    }
 
-is correct even when rolling over provided `millis_old` is of type `unsigned long`
-and old and new time are no more than 32 seconds apart.
+is long-term accurate even when rolling over provided `millis_old` is of type
+`unsigned long`.
 
 For clock speeds of 16 MHz and below, the return value of `millis()`
 occasionally jumps up by more than one (notwithstanding low/zero drift).
