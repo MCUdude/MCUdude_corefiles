@@ -35,18 +35,17 @@
 // What we really want to compute is the number of microseconds in one
 // timer cycle, thus 64 * 256 * 1e6 / F_CPU.  When calculating with integers,
 // the product 64 * 256 * 1000**2 overflows an unsigned long.  We resolve this
-// by recognizing that F_CPU is evenly divisible by 100 in all cases.  Thus, we
-// cancel a factor of 100 on both sides, which allows us to use long int.
-// It also turns out that the code runs faster when this number is unsigned!
+// by recognizing that F_CPU is evenly divisible by 10 in all cases.  Thus, we
+// cancel a factor of 10 on both sides, which allows us to use unsigned long.
+// It turns out that code runs faster when the number is explicitly unsigned!
 #define MICROSECONDS_PER_TIMER0_OVERFLOW \
-  (64UL * 256UL * 10000UL / ((unsigned long) F_CPU / 100UL))
+  (64UL * 256UL * 100000UL / (F_CPU / 10UL))
 #endif
 
 // the whole number of milliseconds per timer0 overflow
 // For 20MHz this would be 0 (because of 819)
 // For 16MHz this would be 1 (because of 1024)
 #define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000U)
-#define MILLIS_INC_PLUS1 (MILLIS_INC + 1U)
 
 // the fractional number of milliseconds per timer0 overflow. we shift right
 // by three to fit these numbers into a byte. (for the clock speeds we care
@@ -61,7 +60,7 @@
 volatile unsigned long timer0_millis = 0;
 volatile unsigned char timer0_fract = 0;
 
-// Add a correction calculation to make millis () exact for certain clocks.
+// Add a correction calculation to make millis () exact for most clocks.
 // The idea is to compare the exact microseconds/8 between overflows,
 // namely (1. / F_CPU * 64. * 256. * 1e6) % 1000 / 8.,
 // with the integer rounded down version in FRACT_INC.
@@ -76,18 +75,13 @@ volatile unsigned char timer0_fract = 0;
 //               Correct brute force by counting 5 out of 27.
 //               Do it the same way for the remaining odd cases.
 // This way we correct losses from both the rounding to usecs and the shift.
-#if F_CPU == 25000000L || \
-    F_CPU == 24000000L || \
-    F_CPU == 22118400L || \
-    F_CPU == 20000000L || \
-    F_CPU == 18432000L || \
-    F_CPU == 18000000L || \
-    F_CPU == 14745600L || \
-    F_CPU == 12000000L || \
-    F_CPU == 11059200L || \
-    F_CPU ==  7372800L || \
-    F_CPU ==  3686400L || \
-    F_CPU ==  1843200L
+// For the remaining non-exact cases, we use a highly accurate approximation.
+// This happens to be exact, too, for leftover UART-related frequencies.
+#define FRACT_INC_PLUS
+#define EXACT_NUM (64UL * 256UL * 125UL * 100UL)
+#define EXACT_DEN (F_CPU / 10UL)
+#define EXACT_REM (EXACT_NUM - (EXACT_NUM / EXACT_DEN) * EXACT_DEN)
+#if EXACT_REM > 0 || MICROSECONDS_PER_TIMER0_OVERFLOW % 256 > 0 // correct
 #define CORRECT_EXACT_MILLIS
 #define CORRECT_EXACT_MICROS
 #if F_CPU == 25000000L          // for 25 MHz we get 81.92, off by 23./25.
@@ -108,6 +102,9 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 18000000L        // for 18 MHz we get 113.78, off by 7./9.
 #define CORRECT_BRUTE 7
 #define CORRECT_ROLL 9
+#elif F_CPU == 16500000L        // for 16.5 MHz we get 124 + 4./33.
+#define CORRECT_BRUTE 4
+#define CORRECT_ROLL 33
 #elif F_CPU == 14745600L        // for 14.7456 MHz we get 13.89, off by 8./9.
 #define CORRECT_HI
 #define CORRECT_ROLL 9
@@ -117,18 +114,36 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 11059200L        // for 11.0592 MHz we get 60 + 5./27.
 #define CORRECT_BRUTE 5
 #define CORRECT_ROLL 27
-#elif F_CPU == 7372800L         // for 7.372800 MHz we get 27 + 7./9.
+#elif F_CPU == 10000000L        // for 10 MHz we get 79.8, off by 4./5.
+#define CORRECT_HI
+#define CORRECT_ROLL 5
+#elif F_CPU == 9216000L         // for 9.216 MHz we get 97. + 2./9.
+#define CORRECT_BRUTE 2
+#define CORRECT_ROLL 9
+#elif F_CPU == 7372800L         // for 7.3728 MHz we get 27 + 7./9.
 #define CORRECT_BRUTE 7
 #define CORRECT_ROLL 9
-#elif F_CPU == 3686400L         // for 3.686400 MHz we get 55 + 5./9.
+#elif F_CPU == 6000000L         // for 6 MHz we get 91 + 1./3.
+#define CORRECT_LO
+#define CORRECT_ROLL 3
+#elif F_CPU == 3686400L         // for 3.6864 MHz we get 55 + 5./9.
 #define CORRECT_BRUTE 5
 #define CORRECT_ROLL 9
 #elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
 #define CORRECT_LO
 #define CORRECT_ROLL 9
+#else                           // fallback accurate to better than 8 ppm
+#define CORRECT_BRUTE (((2U * 135U + 1U) * EXACT_REM) / (2U * EXACT_DEN))
+#define CORRECT_ROLL 135
+#if CORRECT_BRUTE <= 0
+#undef CORRECT_EXACT_MILLIS     // low corner case amounts to nothing
+#elif CORRECT_BRUTE >= CORRECT_ROLL
+#undef CORRECT_EXACT_MILLIS
+#undef FRACT_INC_PLUS
+#define FRACT_INC_PLUS + 1      // high corner case always adds one extra
 #endif
-#define CORRECT_ROLL_MINUS1 (CORRECT_ROLL - 1)
-#endif // CORRECT_EXACT_MILLIS
+#endif // fallback
+#endif // EXACT_REM > 0
 
 #ifndef CORRECT_EXACT_MICROS
 // variable is only needed in micros() calculation without exactness correction
@@ -152,11 +167,11 @@ ISR(TIMER0_OVF_vect)
   unsigned long m = timer0_millis;
   unsigned char f = timer0_fract;
 
-  f += FRACT_INC;
+  f += FRACT_INC FRACT_INC_PLUS;
 
 #ifdef CORRECT_EXACT_MILLIS
   // correct millis () to be exact for certain clocks
-  if (timer0_exact == CORRECT_ROLL_MINUS1) {
+  if (timer0_exact == CORRECT_ROLL - 1) {
     timer0_exact = 0;
 #ifdef CORRECT_LO
     ++f;
@@ -184,7 +199,7 @@ ISR(TIMER0_OVF_vect)
 
   if (f >= FRACT_MAX) {
     f -= FRACT_MAX;
-    m += MILLIS_INC_PLUS1;
+    m += MILLIS_INC + 1;
   }
   else {
     m += MILLIS_INC;
@@ -271,11 +286,15 @@ unsigned long micros() {
   m = (((m << 7) - (m << 1) - m + f) << 3) +
       ((t * MICROSECONDS_PER_TIMER0_OVERFLOW) >> 8);
   return q ? m + MICROSECONDS_PER_TIMER0_OVERFLOW : m;
+#elif 1
+  /* All power-of-two Megahertz frequencies enter here, as well as 12.8 MHz.
+     We only end up here if right shift before multiplication is exact. */
+  return ((m << 8) + t) * (MICROSECONDS_PER_TIMER0_OVERFLOW >> 8);
 #else
-
-/* The code below has the following accuracy
- * =========================================
-
+/*
+ * This is the old code requiring individual treatment for each frequency.
+ * It has the following accuracy for non-power-of-two MHz frequencies.
+ *
  * 20 MHz has a drift of 1 in 65536 (~15 ppm)
  * 18.432 Mhz has a drift of 1 in 64000 (~16 ppm)
  * 25 MHz      has a drift of 1 in 43691 (~23 ppm)
@@ -288,9 +307,7 @@ unsigned long micros() {
  * 12 MHz has a drift of 1 in 4096
  * 22.1184 MHz has a drift of 1 in 2857 (350ppm)
  * 11.0592 MHz has a drift of 1 in 2857
-
 */
-
 #if F_CPU >= 32000000L
   // we need to put this #if here to avoid entering the wrong branch for 32 MHz
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
@@ -372,7 +389,7 @@ unsigned long micros() {
   // t is multiplied by 4
   return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 #endif
-#endif // !CORRECT_EXACT_MICROS
+#endif // 0
 }
 
 void delay(unsigned long ms)
@@ -581,6 +598,21 @@ void delayMicroseconds(unsigned int us)
   // us is at least 6 so we may subtract 3
   us -= 3; // = 2 cycles
 
+#elif F_CPU >= 16500000L
+  // for a one-microsecond delay, simply return.  the overhead
+  // of the function call takes 14 (16) cycles, which is about 1us
+  if (us <= 1) return; //  = 3 cycles, (4 when true)
+
+  // the following loop takes 1/4 of a microsecond (4 cycles) times 32./33.
+  // per iteration, thus rescale us by 4. * 33. / 32. = 4.125 to compensate
+  us = (us << 2) + (us >> 3); // x4.125 with 22 cycles
+
+  // account for the time taken in the preceding commands.
+  // we burned 37 (39) cycles above, plus 2 below, remove 10 (4*10=40)
+  // us is at least 8, so we subtract only 7 to keep it positive
+  // the error is below one microsecond and not worth extra code
+  us -= 7; // = 2 cycles
+
 #elif F_CPU >= 16000000L
   // for a one-microsecond delay, simply return.  the overhead
   // of the function call takes 14 (16) cycles, which is 1 us
@@ -680,42 +712,47 @@ void delayMicroseconds(unsigned int us)
   if (us <= 2) return; // = 3 cycles, (4 when true)
 
   // the following loop takes 2/5 of a microsecond (4 cycles)
-  // per iteration, so execute it three times for each microsecond of
-  // delay requested.
+  // per iteration, so execute it five times for every 2 microseconds
+  // of delay requested.
   us = (us << 1) + (us >> 1); // x2.5 us, = 7 cycles
 
   // account for the time taken in the preceeding commands.
-  // we just burned 22 (24) cycles above, remove 5, (5*4=20)
-  // us is at least 20 so we can substract 5
-  us -= 5; // = 2 cycles
+  // we burn 22 (24) cycles above plus 2 below, remove 6, (6*4=24)
+  // us is at least 7 so we can subtract 6
+  us -= 6; // = 2 cycles
 
 #elif F_CPU >= 9216000L
   // the overhead of the function call is 14 (16) cycles which is ~1.5 us
-  if (us <= 3) return; // = 3 cycles, (4 when true)
+  if (us <= 2) return; // = 3 cycles, (4 when true)
 
-  us = (us << 2) + us ; // x2.5x2 us, = 7 cycles
+  // factor of 10 in multiplying by 2 and making the loop last 5 cycles
+  us <<= 1; // x2 us, = 2 cycles
+
+  // make the delay loop last 5 cycles
+#undef  _MORENOP_
+#define _MORENOP_ " nop \n\t"
 
                        // +1 cycle (register save)
-  // user wants to wait longer than 6 us
-  if (us > 30) // = 3 cycles
+  // user wants to wait longer than 5 us
+  if (us > 11) // = 3 cycles
   {
-    // since the loop is not accurately 2/5 of a microsecond we need
+    // since the loop is not accurately 1/2 of a microsecond we need
     // to multiply us by 0.9216 (11.0592 / 12)
-    us = (us * 30199L) >> 16;   // x(0.9216/2) us = 29 cycles (30199 = 0.4608 x 0x10000L)
-    // this drops us to at least 14
+    us = (us * 60398UL) >> 16;   // x(0.9216) us = 29 cycles
+    // this drops us to at least 11
 
     // account for the time taken in the preceeding commands.
-    // we just burned 53 (55) cycles above, remove 13, (13*4=52)
-    us -= 13; // = 2 cycles
+    // we just burned 48 (50) cycles above, remove 10 (10*5=50)
+    us -= 10; // = 2 cycles
   }
   else
   {
     // account for the time taken in the preceeding commands.
-    // we just burned 31 (33) cycles above, remove 8, (8*4=32)
+    // we just burned 26 (28) cycles above, remove 5 (5*5=25)
+    // us is at least 6 so we may subtract 5
 
               // 1 cycle when if jump here
-    us >>= 1; // 2 cycles restore x2.5 us
-    us -=  8; // 2 cycles
+    us -= 5;  // 2 cycles
               // 2 cycles to jump back to delay cycle.
   }
 
@@ -771,6 +808,20 @@ void delayMicroseconds(unsigned int us)
     us -= 7; // 2 cycles
              // 2 cycles to jump back to delay cycle.
   }
+
+#elif F_CPU >= 6000000L
+  // for a 1 to 3 microsecond delay, simply return.  the overhead
+  // of the function call takes 14 (16) cycles, which is 2.5us
+  if (us <= 3) return; //  = 3 cycles, (4 when true)
+
+  // make the loop below last 6 cycles
+#undef  _MORENOP_
+#define _MORENOP_ " nop \n\t  nop \n\t"
+
+  // the following loop takes 1 microsecond (6 cycles) per iteration
+  // we burned 15 (17) cycles above, plus 2 below, remove 3 (3 * 6 = 18)
+  // us is at least 4 so we can subtract 3
+  us -= 3; // = 2 cycles
 
 #elif F_CPU >= 4000000L
   __asm__ __volatile__ ("nop"); // just waiting 1 cycle
@@ -878,8 +929,8 @@ void delayMicroseconds(unsigned int us)
   __asm__ __volatile__ (
     "1: sbiw %0,1" "\n\t"            // 2 cycles
         _MORENOP_                    // 4 cycles if 32 MHz or
-                                     // 1 cycle  if 25 MHz or
-                                     // 2 cycles if 18 MHz
+                                     // 1 cycle  if 25, 9.216
+                                     // 2 cycles if 18, 6 MHz
     "   brne 1b"                     // 2 cycles
     : /* no outputs */
     : "w" (us)
