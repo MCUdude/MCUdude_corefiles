@@ -132,7 +132,7 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
 #define CORRECT_LO
 #define CORRECT_ROLL 9
-#else                           // fallback accurate to better than 8 ppm
+#else                           // fallback accurate to better than 60 ppm
 #define CORRECT_BRUTE ((2U * 135U * EXACT_REM + EXACT_DEN) / (2U * EXACT_DEN))
 #define CORRECT_ROLL 135
 #if CORRECT_BRUTE <= 0

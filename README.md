@@ -46,7 +46,9 @@ micros, delay, delayMicroseconds).
 ### Adding further clock frequencies
 
 The calculation of `millis()`, `micros()` and `delay()` is automatic for
-arbitrary frequencies.  It is either exact or approximate to 8 ppm accuracy.
+arbitrary frequencies.
+Depending on the prime factors of the frequency, it is either exact or
+approximate to 60 ppm accuracy (worst-case).
 The only thing required is adding support in `delayMicroseconds()`.
 
 
@@ -65,7 +67,7 @@ For the clock speeds listed above, `micros()` is corrected to zero drift.
 Even for very long run times, the `micros()` function will precisely follow the
 oscillator used.
 
-Frequencies not listed above are either exact or corrected to below 8 ppm drift
+Frequencies not listed above are either exact or corrected to below 60 ppm drift
 and in exact sync with `millis()`.
 
 Note that the result of `micros()` may jump up by several microseconds between
@@ -82,7 +84,7 @@ For the clock speeds listed above, `millis()` is corrected to zero drift.
 Even for very long run times, the `millis()` function will precisely follow the
 oscillator used.
 
-Frequencies not listed above are either exact or corrected to below 8 ppm drift
+Frequencies not listed above are either exact or corrected to below 60 ppm drift
 and in exact sync with `micros()` and `delay()`.
 
 We do not register the rollover of the `unsigned long` millis counter that
