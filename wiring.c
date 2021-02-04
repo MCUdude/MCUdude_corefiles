@@ -39,7 +39,7 @@
 // cancel a factor of 10 on both sides, which allows us to use unsigned long.
 // It turns out that code runs faster when the number is explicitly unsigned!
 #define MICROSECONDS_PER_TIMER0_OVERFLOW \
-  (64UL * 256UL * 100000UL / (F_CPU / 10UL))
+  (64UL * 256UL * 100000UL / ((F_CPU + 5UL) / 10UL))
 #endif
 
 // the whole number of milliseconds per timer0 overflow
@@ -79,7 +79,7 @@ volatile unsigned char timer0_fract = 0;
 // This happens to be exact, too, for leftover UART-related frequencies.
 #define FRACT_INC_PLUS
 #define EXACT_NUM (64UL * 256UL * 125UL * 100UL)
-#define EXACT_DEN (F_CPU / 10UL)
+#define EXACT_DEN ((F_CPU + 5UL) / 10UL)
 #define EXACT_REM (EXACT_NUM - (EXACT_NUM / EXACT_DEN) * EXACT_DEN)
 #if EXACT_REM > 0 || MICROSECONDS_PER_TIMER0_OVERFLOW % 256 > 0 // correct
 #define CORRECT_EXACT_MILLIS
@@ -132,8 +132,8 @@ volatile unsigned char timer0_fract = 0;
 #elif F_CPU == 1843200L         // for 1.8432 MHz we get 111.11, off by 1./9.
 #define CORRECT_LO
 #define CORRECT_ROLL 9
-#else                           // fallback accurate to better than 8 ppm
-#define CORRECT_BRUTE (((2U * 135U + 1U) * EXACT_REM) / (2U * EXACT_DEN))
+#else                           // fallback accurate to better than 60 ppm
+#define CORRECT_BRUTE ((2U * 135U * EXACT_REM + EXACT_DEN) / (2U * EXACT_DEN))
 #define CORRECT_ROLL 135
 #if CORRECT_BRUTE <= 0
 #undef CORRECT_EXACT_MILLIS     // low corner case amounts to nothing
