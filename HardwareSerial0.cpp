@@ -36,12 +36,12 @@
 
 #if defined(HAVE_HWSERIAL0)
 
-#if defined(USART0_RX_vect)
-  ISR(USART0_RX_vect)
-#elif defined(USART0_RXC_vect)
+#if defined(USART0_RXC_vect)
   ISR(USART0_RXC_vect)
 #elif defined(USART_RXC_vect)
   ISR(USART_RXC_vect)
+#elif defined(USART0_RX_vect)
+  ISR(USART0_RX_vect)
 #elif defined(USART_RX_vect)
   ISR(USART_RX_vect)
 #else
