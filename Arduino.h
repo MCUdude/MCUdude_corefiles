@@ -139,14 +139,6 @@ void yield(void);
 
 #endif
 
-// undefine stdlib's abs if encountered
-#ifdef abs
-#undef abs
-#endif
-
-#define radians(deg) ((deg) * DEG_TO_RAD)
-#define degrees(rad) ((rad) * RAD_TO_DEG)
-
 #define interrupts() sei()
 #define noInterrupts() cli()
 
@@ -306,6 +298,11 @@ extern const uint8_t PROGMEM digital_pin_to_timer_PGM[];
 } // extern "C"
 #endif
 
+// Undefine stdlib's abs if encountered
+#ifdef abs
+  #undef abs
+#endif
+
 #ifdef __cplusplus
 	template<class T>
 	auto abs(const T& x) -> decltype(x > 0 ? x : -x) {
@@ -332,6 +329,16 @@ extern const uint8_t PROGMEM digital_pin_to_timer_PGM[];
 		return x * x;
 	}
 
+  template<class T>
+  auto radians(const T& deg) -> decltype(deg * DEG_TO_RAD) {
+    return deg * DEG_TO_RAD;
+  }
+
+  template<class T>
+  auto degrees(const T& rad) -> decltype(rad * RAD_TO_DEG) {
+    return rad * RAD_TO_DEG;
+  }
+
   template<class T, class L, class H>
 	auto constrain(const T& x, const L& l, const H& h) -> decltype((x < l) ? l : (x > h) ? h : x) {
 		return (x < l) ? l : (x > h) ? h : x;
@@ -342,6 +349,8 @@ extern const uint8_t PROGMEM digital_pin_to_timer_PGM[];
   #define min(a,b)     ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
   #define max(a,b)     ({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
   #define sq(x)        ({ typeof (x) _x = (x); _x * _x; })
+  #define radians(deg) ((deg) * DEG_TO_RAD)
+  #define degrees(rad) ((rad) * RAD_TO_DEG)
   #define constrain(x,low,high)     ({ \
   typeof (x) _x = (x);               \
   typeof (low) _l = (low);           \
