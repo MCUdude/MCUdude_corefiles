@@ -72,27 +72,19 @@ int analogRead(uint8_t pin)
   // without a delay, we seem to read from the wrong channel
   //delay(1);
 
-#if defined(ADCSRA) && defined(ADCL)
+#if defined(ADCSRA) && defined(ADC)
   // start the conversion
   ADCSRA |= _BV(ADSC);
 
   // ADSC is cleared when the conversion finishes
   while (ADCSRA & _BV(ADSC));
 
-  // we have to read ADCL first; doing so locks both ADCL
-  // and ADCH until ADCH is read.  reading ADCL second would
-  // cause the results of each conversion to be discarded,
-  // as ADCL and ADCH would be locked when it completed.
-  low  = ADCL;
-  high = ADCH;
+  // ADC macro takes care of reading ADC register.
+ 	// avr-gcc implements the proper reading order: ADCL is read first.
+ 	return ADC;
 #else
-  // we dont have an ADC, return 0
-  low  = 0;
-  high = 0;
+  return 0;
 #endif
-
-  // combine the two bytes
-  return (high << 8) | low;
 }
 
 
