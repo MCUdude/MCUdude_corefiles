@@ -78,11 +78,11 @@ void serialEventRun(void)
 }
 
 // macro to guard critical sections when needed for large TX buffer sizes
- #if (SERIAL_TX_BUFFER_SIZE>256)
- #define TX_BUFFER_ATOMIC ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
- #else
- #define TX_BUFFER_ATOMIC
- #endif
+#if (SERIAL_TX_BUFFER_SIZE>256)
+#define TX_BUFFER_ATOMIC ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+#else
+#define TX_BUFFER_ATOMIC
+#endif
 
 // Actual interrupt handlers //////////////////////////////////////////////////////////////
 
@@ -97,8 +97,14 @@ void HardwareSerial::_tx_udr_empty_irq(void)
 
   // clear the TXC bit -- "can be cleared by writing a one to its bit
   // location". This makes sure flush() won't return until the bytes
-  // actually got written
-  *_ucsra |= _BV(TXC0);
+  // actually got written. Other r/w bits are preserved, and zeroes
+  // written to the rest.
+
+  #ifdef MPCM0
+    *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << MPCM0))) | (1 << TXC0);
+  #else
+    *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << TXC0)));
+  #endif
 
   if (_tx_buffer_head == _tx_buffer_tail) {
     // Buffer empty, so disable interrupts
@@ -221,8 +227,22 @@ size_t HardwareSerial::write(uint8_t c)
   // significantly improve the effective datarate at high (>
   // 500kbit/s) bitrates, where interrupt overhead becomes a slowdown.
   if (_tx_buffer_head == _tx_buffer_tail && bit_is_set(*_ucsra, UDRE0)) {
-    *_udr = c;
-    *_ucsra |= _BV(TXC0);
+    // If TXC is cleared before writing UDR and the previous byte
+    // completes before writing to UDR, TXC will be set but a byte
+    // is still being transmitted causing flush() to return too soon.
+    // So writing UDR must happen first.
+    // Writing UDR and clearing TC must be done atomically, otherwise
+    // interrupts might delay the TXC clear so the byte written to UDR
+    // is transmitted (setting TXC) before clearing TXC. Then TXC will
+    // be cleared when no bytes are left, causing flush() to hang
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+      *_udr = c;
+      #ifdef MPCM0
+        *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << MPCM0))) | (1 << TXC0);
+      #else
+        *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << TXC0)));
+      #endif
+    }
     return 1;
   }
   tx_buffer_index_t i = (_tx_buffer_head + 1) % SERIAL_TX_BUFFER_SIZE;
